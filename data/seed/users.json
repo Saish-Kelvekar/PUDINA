@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Riya Sharma",
+    "email": "user@demo.test",
+    "password": "demo123",
+    "role": "user"
+  },
+  {
+    "name": "Admin",
+    "email": "admin@demo.test",
+    "password": "demo123",
+    "role": "admin"
+  },
+  {
+    "name": "Ambulance Desk",
+    "email": "ems@demo.test",
+    "password": "demo123",
+    "role": "emergency"
+  }
+]

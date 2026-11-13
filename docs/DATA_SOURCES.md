@@ -60,7 +60,11 @@ Simulation: second-by-second, per car, fixed number of cycles (default 10), seed
 
 Assumptions and limitations: demand scales with congestion (queues form when roads are slow) — it is a deliberately simple, transparent proxy, **not** a measurement; queues are per-lane estimates; the 10 signalised junctions are synthetic (OSM does not encode working signals); `throughput_change_pct` can be negative on easily-cleared junctions — it reports what the seed produces.
 
-## Sample data — `data/sample/`
+## Seed data — `data/seed/`
+
+- `users.json` — exactly the contract §5 triple: `user@demo.test` (user), `admin@demo.test` (admin), `ems@demo.test` (emergency); plain `demo123` passwords; M2's seed script bcrypt-hashes them into the `users` table.
+- `incidents.json` — 15 incidents placed by interpolating along `graph.json` edge polylines (all verified ≤ 30 m from a real road — contract requirement). Two pairs are engineered near-duplicates (same segment, close in time, word-heavy overlap) and validate **≥ 0.6** under M2's duplicate-scoring formula (api.md §2.7); every other pair scores < 0.6. `minutes_ago` is measured against the seed script's run time. 5 verified / 10 pending, so the verified ones perturb routes from demo start. All `USER_REPORTED`, never shown as live.
+
 
 Kept for continuity. Tiny hand-made stand-in (8 nodes/10 edges, 50 rows) created in Phase 0. Replaced everywhere now by the real files; kept in-repo so M1/M2 diffs stay meaningful.
 
@@ -79,6 +83,10 @@ Kept for continuity. Tiny hand-made stand-in (8 nodes/10 edges, 50 rows) created
   `confidence = 1 − min(1, σ / free_flow_kmph)`, rounded to 2 decimals. A spread that is small relative to free-flow → high confidence.
 - **Level thresholds** (shared with the CSV): `flowing` > 0.75 · `moderate` 0.50–0.75 · `heavy` 0.25–0.50 · `severe` < 0.25.
 - **Known limits**: `incident` positives are rare (118 rows) so incident weight is small by construction; week 6 congestion is deliberately light (all simulated); the model predicts *this segment* only — no graph-wide propagation yet.
+
+## Sample data — `data/sample/`
+
+Kept for continuity. Tiny hand-made stand-in (8 nodes/10 edges, 50 rows) created in Phase 0. Replaced everywhere now by the real files; kept in-repo so M1/M2 diffs stay meaningful.
 
 ## Licensing / attribution
 
