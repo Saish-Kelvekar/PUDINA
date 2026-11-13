@@ -24,6 +24,8 @@ import type {
   HistoryPlace,
   RouteHistoryItem,
   RouteHistoryPage,
+  CameraStatus,
+  CameraSendResult,
 } from '@/types';
 import { routeColor } from '@/lib/utils';
 
@@ -428,6 +430,39 @@ export const apiClient = {
 
   async clearRouteHistory(): Promise<{ deleted: number }> {
     return del('/routes/history');
+  },
+
+  // ----- Live camera -> Telegram -------------------------------------------
+  async getCameraStatus(): Promise<CameraStatus> {
+    return get<CameraStatus>('/camera/status');
+  },
+
+  /** Sends a captured photo or recorded video to the Telegram bot (through the backend). */
+  async sendCameraMedia(
+    kind: 'photo' | 'video',
+    file: Blob,
+    opts: {
+      incidentId?: number | string | null;
+      note?: string;
+      danger?: 'low' | 'medium' | 'high' | '';
+      location?: { lat: number; lng: number } | null;
+    } = {},
+  ): Promise<CameraSendResult> {
+    const params: Record<string, string> = {};
+    if (opts.incidentId) params.incident_id = String(opts.incidentId);
+    if (opts.note && opts.note.trim()) params.note = opts.note.trim();
+    // Without an incident, the operator can set the danger level and share this device's location.
+    if (!opts.incidentId && opts.danger) params.danger = opts.danger;
+    if (!opts.incidentId && opts.location) {
+      params.lat = opts.location.lat.toFixed(6);
+      params.lng = opts.location.lng.toFixed(6);
+    }
+    const res = await api.post(`/camera/${kind}`, file, {
+      params,
+      headers: { 'Content-Type': file.type || (kind === 'photo' ? 'image/jpeg' : 'video/webm') },
+      timeout: 120000, // videos can take a while to upload
+    });
+    return res.data.data as CameraSendResult;
   },
 
   // ----- Incidents ---------------------------------------------------------

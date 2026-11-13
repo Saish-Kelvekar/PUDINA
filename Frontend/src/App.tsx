@@ -14,6 +14,7 @@ import SignalOptimization from '@/pages/SignalOptimization';
 import EmergencyRouting from '@/pages/EmergencyRouting';
 import Admin from '@/pages/Admin';
 import Analytics from '@/pages/Analytics';
+import LiveCamera from '@/pages/LiveCamera';
 import { ToastProvider } from '@/components/ui/Toast';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -128,6 +129,7 @@ function AppShell() {
             <Route path="/signal" element={<RequireAuth><SignalOptimization /></RequireAuth>} />
             <Route path="/emergency" element={<RequireAuth><EmergencyRouting /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+            <Route path="/camera" element={<RequireAuth><LiveCamera /></RequireAuth>} />
             <Route path="/analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
             <Route path="/" element={<Navigate to="/map" replace />} />
             <Route path="*" element={<Navigate to="/map" replace />} />

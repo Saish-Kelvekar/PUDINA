@@ -336,3 +336,21 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
 }
+
+// ----- Live camera -> Telegram -----
+export interface CameraStatus {
+  telegram_configured: boolean;
+  limits_mb: { photo: number; video: number };
+}
+
+export interface CameraSendResult {
+  sent: boolean;
+  kind: 'photo' | 'video';
+  sent_as: 'sendPhoto' | 'sendVideo' | 'sendDocument';
+  size_kb: number;
+  incident_id: number | null;
+  danger_level: 'low' | 'medium' | 'high' | null;
+  location: { lat: number; lng: number; road: string | null; maps_url: string } | null;
+  map_pin_sent: boolean;
+  telegram_message_id?: number;
+}

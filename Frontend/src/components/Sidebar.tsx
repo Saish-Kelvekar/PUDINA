@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Map, Route, AlertCircle, Brain, Signal, Ambulance, ShieldAlert, BarChart3, LogOut } from 'lucide-react';
+import { Map, Route, AlertCircle, Brain, Signal, Ambulance, ShieldAlert, BarChart3, LogOut, Camera } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -15,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Live Traffic Map', short: 'Map', href: '/map', icon: <Map className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Route Planner', short: 'Routes', href: '/route', icon: <Route className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Report Incident', short: 'Report', href: '/report', icon: <AlertCircle className="h-[18px] w-[18px]" />, group: 'core' },
+  { label: 'Live Camera', short: 'Camera', href: '/camera', icon: <Camera className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Traffic Prediction', short: 'Forecast', href: '/prediction', icon: <Brain className="h-[18px] w-[18px]" />, group: 'advanced' },
   { label: 'Signal Optimization', short: 'Signals', href: '/signal', icon: <Signal className="h-[18px] w-[18px]" />, group: 'advanced' },
   { label: 'Emergency Routing', short: 'Emergency', href: '/emergency', icon: <Ambulance className="h-[18px] w-[18px]" />, role: 'emergency', group: 'advanced' },

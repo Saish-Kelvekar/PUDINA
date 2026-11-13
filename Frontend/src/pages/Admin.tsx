@@ -11,7 +11,8 @@ import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
 import { isoToLocalTime, statusColor, congestionColor } from '@/lib/colors';
 import { istTime } from '@/lib/utils';
 import { useLiveIncidents } from '@/lib/realtime';
-import { CheckCircle2, XCircle, MinusCircle, AlertTriangle, MapPin, GitMerge, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, MinusCircle, AlertTriangle, MapPin, GitMerge, ChevronLeft, ChevronRight, Clock, Camera } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const LEVEL_AFTER: Record<string, number> = { flowing: 0.1, moderate: 0.4, heavy: 0.65, severe: 0.9, closed: 1 };
 
@@ -275,6 +276,14 @@ export default function Admin() {
                         >
                           <AlertTriangle className="h-3.5 w-3.5" /> Impact
                         </button>
+                        <Link
+                          to={`/camera?incident=${inc.id}`}
+                          className="flex items-center justify-center rounded-full border border-ink/15 px-2.5 py-1.5 text-ink-muted hover:bg-white"
+                          title="Capture evidence"
+                          aria-label={`Capture evidence for incident ${inc.id}`}
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                        </Link>
                       </div>
                     )}
                     {inc.status === 'pending' && (

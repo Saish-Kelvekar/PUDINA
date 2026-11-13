@@ -10,7 +10,8 @@ import { useLiveIncidents } from '@/lib/realtime';
 import type { EdgeCongestion, Incident } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
 import { isoToLocalTime } from '@/lib/colors';
-import { MapPin, Send, Crosshair, CheckCircle2 } from 'lucide-react';
+import { MapPin, Send, Crosshair, CheckCircle2, Camera } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { StatusPill } from '@/components/ui/Badge';
 import { MapStage, MapChip } from '@/components/layout/MapStage';
 import { PageHeading } from '@/components/layout/PageHeading';
@@ -241,6 +242,12 @@ export default function ReportIncident() {
                 ID #{lastSubmitted.id} · {isoToLocalTime(lastSubmitted.created_at)} ·{' '}
                 <span className="capitalize text-bronze-light">{lastSubmitted.status}</span>
               </div>
+              <Link
+                to={`/camera?incident=${lastSubmitted.id}`}
+                className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-full border border-sand-50/40 px-4 py-2 text-xs font-semibold text-sand-50 hover:bg-white/10"
+              >
+                <Camera className="h-3.5 w-3.5" /> Capture evidence
+              </Link>
               <button
                 onClick={() => setLastSubmitted(null)}
                 className="mt-1 w-full rounded-full bg-sand-50 px-4 py-2 text-xs font-semibold text-ink hover:bg-white"
