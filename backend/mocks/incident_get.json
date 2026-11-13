@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "data": {
+    "incident": {
+      "id": 101,
+      "category": "accident",
+      "description": "Bike and car collision on 1st Block Main Road, one lane blocked",
+      "lat": 12.931,
+      "lng": 77.5589,
+      "segment_id": "e7",
+      "reported_severity": "medium",
+      "estimated_severity": {
+        "level": "high",
+        "confidence": 0.82,
+        "evidence": [
+          "Category accident (+2)",
+          "1 of 1 lanes blocked (+2)",
+          "Segment already heavy: speed ratio 0.32 (+1)",
+          "Reported as medium (+1)"
+        ]
+      },
+      "lanes_blocked": 1,
+      "is_closure": false,
+      "status": "verified",
+      "merged_into": null,
+      "reported_by": {
+        "id": 1,
+        "name": "Riya Sharma"
+      },
+      "source": "USER_REPORTED",
+      "created_at": "2026-11-10T03:12:40Z",
+      "updated_at": "2026-11-10T03:20:05Z",
+      "verified_at": "2026-11-10T03:20:05Z",
+      "resolved_at": null
+    },
+    "logs": [
+      {
+        "id": 9001,
+        "action": "created",
+        "by": {
+          "id": 1,
+          "name": "Riya Sharma"
+        },
+        "details": {},
+        "created_at": "2026-11-10T03:12:40Z"
+      },
+      {
+        "id": 9002,
+        "action": "verified",
+        "by": {
+          "id": 2,
+          "name": "Admin"
+        },
+        "details": {},
+        "created_at": "2026-11-10T03:20:05Z"
+      }
+    ]
+  },
+  "error": null
+}

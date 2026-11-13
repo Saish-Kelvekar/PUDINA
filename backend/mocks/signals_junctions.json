@@ -1,0 +1,122 @@
+{
+  "success": true,
+  "data": {
+    "junctions": [
+      {
+        "junction_id": "J-n1",
+        "node_id": "n1",
+        "name": "80 Feet Road Junction",
+        "lat": 12.931,
+        "lng": 77.5562,
+        "approaches": [
+          {
+            "approach_id": "n1-e1",
+            "edge_id": "e1",
+            "from_node": "n2",
+            "label": "from 5th Block Junction (80 Feet Road)"
+          },
+          {
+            "approach_id": "n1-e4",
+            "edge_id": "e4",
+            "from_node": "n5",
+            "label": "from Jyothi Nivas College Junction (Jyothi Nivas College Road)"
+          },
+          {
+            "approach_id": "n1-e5",
+            "edge_id": "e5",
+            "from_node": "n6",
+            "label": "from Sony World Junction (100 Feet Road)"
+          }
+        ],
+        "current_timing": {
+          "cycle_s": 105,
+          "green_s_each": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        "source": "SIMULATED"
+      },
+      {
+        "junction_id": "J-n2",
+        "node_id": "n2",
+        "name": "5th Block Junction",
+        "lat": 12.9324,
+        "lng": 77.5598,
+        "approaches": [
+          {
+            "approach_id": "n2-e1",
+            "edge_id": "e1",
+            "from_node": "n1",
+            "label": "from 80 Feet Road Junction (80 Feet Road)"
+          },
+          {
+            "approach_id": "n2-e2",
+            "edge_id": "e2",
+            "from_node": "n3",
+            "label": "from BDA Junction (80 Feet Road)"
+          },
+          {
+            "approach_id": "n2-e6",
+            "edge_id": "e6",
+            "from_node": "n4",
+            "label": "from WOK Junction (CMH Road)"
+          },
+          {
+            "approach_id": "n2-e7",
+            "edge_id": "e7",
+            "from_node": "n5",
+            "label": "from Jyothi Nivas College Junction (1st Block Main Road)"
+          }
+        ],
+        "current_timing": {
+          "cycle_s": 140,
+          "green_s_each": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        "source": "SIMULATED"
+      },
+      {
+        "junction_id": "J-n3",
+        "node_id": "n3",
+        "name": "BDA Junction",
+        "lat": 12.9338,
+        "lng": 77.5634,
+        "approaches": [
+          {
+            "approach_id": "n3-e2",
+            "edge_id": "e2",
+            "from_node": "n2",
+            "label": "from 5th Block Junction (80 Feet Road)"
+          },
+          {
+            "approach_id": "n3-e8",
+            "edge_id": "e8",
+            "from_node": "n6",
+            "label": "from Sony World Junction (Sony World Road)"
+          },
+          {
+            "approach_id": "n3-e9",
+            "edge_id": "e9",
+            "from_node": "n7",
+            "label": "from St. John's Junction (Sarjapur Road)"
+          },
+          {
+            "approach_id": "n3-e10",
+            "edge_id": "e10",
+            "from_node": "n8",
+            "label": "from BDA Complex Junction (BDA Complex Road)"
+          }
+        ],
+        "current_timing": {
+          "cycle_s": 140,
+          "green_s_each": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        "source": "SIMULATED"
+      }
+    ]
+  },
+  "error": null
+}

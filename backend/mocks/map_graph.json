@@ -1,0 +1,325 @@
+{
+  "success": true,
+  "data": {
+    "nodes": [
+      {
+        "id": "n1",
+        "lat": 12.931,
+        "lng": 77.5562,
+        "name": "80 Feet Road Junction",
+        "signalised": true
+      },
+      {
+        "id": "n2",
+        "lat": 12.9324,
+        "lng": 77.5598,
+        "name": "5th Block Junction",
+        "signalised": true
+      },
+      {
+        "id": "n3",
+        "lat": 12.9338,
+        "lng": 77.5634,
+        "name": "BDA Junction",
+        "signalised": true
+      },
+      {
+        "id": "n4",
+        "lat": 12.9342,
+        "lng": 77.558,
+        "name": "WOK Junction",
+        "signalised": false
+      },
+      {
+        "id": "n5",
+        "lat": 12.9296,
+        "lng": 77.558,
+        "name": "Jyothi Nivas College Junction",
+        "signalised": false
+      },
+      {
+        "id": "n6",
+        "lat": 12.936,
+        "lng": 77.56,
+        "name": "Sony World Junction",
+        "signalised": false
+      },
+      {
+        "id": "n7",
+        "lat": 12.9368,
+        "lng": 77.567,
+        "name": "St. John's Junction",
+        "signalised": false
+      },
+      {
+        "id": "n8",
+        "lat": 12.9316,
+        "lng": 77.566,
+        "name": "BDA Complex Junction",
+        "signalised": false
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "from": "n1",
+        "to": "n2",
+        "name": "80 Feet Road",
+        "length_m": 420,
+        "road_type": "primary",
+        "lanes": 2,
+        "free_flow_kmph": 40,
+        "oneway": false,
+        "coords": [
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9317,
+            77.558
+          ],
+          [
+            12.9324,
+            77.5598
+          ]
+        ]
+      },
+      {
+        "id": "e2",
+        "from": "n2",
+        "to": "n3",
+        "name": "80 Feet Road",
+        "length_m": 420,
+        "road_type": "primary",
+        "lanes": 2,
+        "free_flow_kmph": 40,
+        "oneway": false,
+        "coords": [
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.9331,
+            77.5616
+          ],
+          [
+            12.9338,
+            77.5634
+          ]
+        ]
+      },
+      {
+        "id": "e3",
+        "from": "n1",
+        "to": "n4",
+        "name": "5th Block Main Road",
+        "length_m": 405,
+        "road_type": "secondary",
+        "lanes": 1,
+        "free_flow_kmph": 30,
+        "oneway": true,
+        "coords": [
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9326,
+            77.5572
+          ],
+          [
+            12.9342,
+            77.558
+          ]
+        ]
+      },
+      {
+        "id": "e4",
+        "from": "n1",
+        "to": "n5",
+        "name": "Jyothi Nivas College Road",
+        "length_m": 250,
+        "road_type": "secondary",
+        "lanes": 1,
+        "free_flow_kmph": 30,
+        "oneway": false,
+        "coords": [
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9303,
+            77.5572
+          ],
+          [
+            12.9296,
+            77.558
+          ]
+        ]
+      },
+      {
+        "id": "e5",
+        "from": "n1",
+        "to": "n6",
+        "name": "100 Feet Road",
+        "length_m": 690,
+        "road_type": "primary",
+        "lanes": 2,
+        "free_flow_kmph": 40,
+        "oneway": false,
+        "coords": [
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.933,
+            77.557
+          ],
+          [
+            12.9352,
+            77.5586
+          ],
+          [
+            12.936,
+            77.56
+          ]
+        ]
+      },
+      {
+        "id": "e6",
+        "from": "n4",
+        "to": "n2",
+        "name": "CMH Road",
+        "length_m": 280,
+        "road_type": "secondary",
+        "lanes": 1,
+        "free_flow_kmph": 30,
+        "oneway": true,
+        "coords": [
+          [
+            12.9342,
+            77.558
+          ],
+          [
+            12.9332,
+            77.559
+          ],
+          [
+            12.9324,
+            77.5598
+          ]
+        ]
+      },
+      {
+        "id": "e7",
+        "from": "n2",
+        "to": "n5",
+        "name": "1st Block Main Road",
+        "length_m": 370,
+        "road_type": "residential",
+        "lanes": 1,
+        "free_flow_kmph": 25,
+        "oneway": false,
+        "coords": [
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.931,
+            77.559
+          ],
+          [
+            12.9296,
+            77.558
+          ]
+        ]
+      },
+      {
+        "id": "e8",
+        "from": "n3",
+        "to": "n6",
+        "name": "Sony World Road",
+        "length_m": 440,
+        "road_type": "secondary",
+        "lanes": 1,
+        "free_flow_kmph": 30,
+        "oneway": false,
+        "coords": [
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.935,
+            77.5618
+          ],
+          [
+            12.936,
+            77.56
+          ]
+        ]
+      },
+      {
+        "id": "e9",
+        "from": "n3",
+        "to": "n7",
+        "name": "Sarjapur Road",
+        "length_m": 510,
+        "road_type": "primary",
+        "lanes": 2,
+        "free_flow_kmph": 40,
+        "oneway": false,
+        "coords": [
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ]
+      },
+      {
+        "id": "e10",
+        "from": "n3",
+        "to": "n8",
+        "name": "BDA Complex Road",
+        "length_m": 370,
+        "road_type": "residential",
+        "lanes": 1,
+        "free_flow_kmph": 25,
+        "oneway": false,
+        "coords": [
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9327,
+            77.5648
+          ],
+          [
+            12.9316,
+            77.566
+          ]
+        ]
+      }
+    ],
+    "node_count": 8,
+    "edge_count": 10,
+    "source": "HISTORICAL",
+    "source_note": "Road network based on OpenStreetMap (sample)",
+    "generated_at": "2026-11-10T00:00:00Z"
+  },
+  "error": null
+}

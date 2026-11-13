@@ -1,0 +1,102 @@
+{
+  "success": true,
+  "data": {
+    "horizon_min": 15,
+    "model_version": "baseline",
+    "made_at_utc": "2026-11-10T03:30:00Z",
+    "generated_at": "2026-11-10T03:31:12Z",
+    "predictions": [
+      {
+        "segment_id": "e1",
+        "current_speed_kmph": 14.0,
+        "predicted_speed_kmph": 14.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e2",
+        "current_speed_kmph": 24.0,
+        "predicted_speed_kmph": 24.0,
+        "predicted_level": "moderate",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e3",
+        "current_speed_kmph": 14.0,
+        "predicted_speed_kmph": 14.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e4",
+        "current_speed_kmph": 17.0,
+        "predicted_speed_kmph": 17.0,
+        "predicted_level": "moderate",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e5",
+        "current_speed_kmph": 18.0,
+        "predicted_speed_kmph": 18.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e6",
+        "current_speed_kmph": 13.0,
+        "predicted_speed_kmph": 13.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e7",
+        "current_speed_kmph": 8.0,
+        "predicted_speed_kmph": 8.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e8",
+        "current_speed_kmph": 16.0,
+        "predicted_speed_kmph": 16.0,
+        "predicted_level": "moderate",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e9",
+        "current_speed_kmph": 22.0,
+        "predicted_speed_kmph": 22.0,
+        "predicted_level": "moderate",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      },
+      {
+        "segment_id": "e10",
+        "current_speed_kmph": 11.0,
+        "predicted_speed_kmph": 11.0,
+        "predicted_level": "heavy",
+        "confidence": null,
+        "target_time_utc": "2026-11-10T03:45:00Z",
+        "source": "AI_PREDICTED"
+      }
+    ]
+  },
+  "error": null
+}

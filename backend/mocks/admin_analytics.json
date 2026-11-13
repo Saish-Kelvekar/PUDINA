@@ -1,0 +1,55 @@
+{
+  "success": true,
+  "data": {
+    "congestion_by_hour": [
+      {
+        "hour_ist": 8,
+        "avg_speed_ratio": 0.78,
+        "heavy_or_severe_share": 0.0,
+        "samples": 30
+      },
+      {
+        "hour_ist": 9,
+        "avg_speed_ratio": 0.41,
+        "heavy_or_severe_share": 0.7,
+        "samples": 20
+      }
+    ],
+    "incidents_by_type": [
+      {
+        "category": "accident",
+        "count": 2
+      },
+      {
+        "category": "roadwork",
+        "count": 1
+      }
+    ],
+    "prediction_error": {
+      "15": {
+        "mae_model_kmph": 2.1,
+        "mae_baseline_kmph": 3.4
+      },
+      "30": {
+        "mae_model_kmph": 2.9,
+        "mae_baseline_kmph": 4.6
+      }
+    },
+    "signal_improvement": [
+      {
+        "junction_id": "J-n2",
+        "name": "5th Block Junction",
+        "avg_wait_before_s": 48.2,
+        "avg_wait_after_s": 36.9
+      }
+    ],
+    "emergency_time_saved": {
+      "sessions": 1,
+      "avg_saved_min": 1.0,
+      "total_saved_min": 1.0
+    },
+    "source_note": "Traffic is SIMULATED. Prediction and signal numbers are M3's example placeholders until their service is live.",
+    "generated_at": "2026-11-10T03:31:12Z"
+  },
+  "error": null
+}

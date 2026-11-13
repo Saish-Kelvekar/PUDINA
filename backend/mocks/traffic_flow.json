@@ -1,0 +1,111 @@
+{
+  "success": true,
+  "data": {
+    "sim_time_utc": "2026-11-10T03:30:00Z",
+    "source": "SIMULATED",
+    "last_updated": "2026-11-10T03:31:12Z",
+    "segments": [
+      {
+        "segment_id": "e1",
+        "speed_kmph": 14.0,
+        "free_flow_kmph": 40,
+        "speed_ratio": 0.35,
+        "congestion_level": "heavy",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e2",
+        "speed_kmph": 24.0,
+        "free_flow_kmph": 40,
+        "speed_ratio": 0.6,
+        "congestion_level": "moderate",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e3",
+        "speed_kmph": 14.0,
+        "free_flow_kmph": 30,
+        "speed_ratio": 0.47,
+        "congestion_level": "heavy",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e4",
+        "speed_kmph": 17.0,
+        "free_flow_kmph": 30,
+        "speed_ratio": 0.57,
+        "congestion_level": "moderate",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e5",
+        "speed_kmph": 18.0,
+        "free_flow_kmph": 40,
+        "speed_ratio": 0.45,
+        "congestion_level": "heavy",
+        "rain": true,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e6",
+        "speed_kmph": 13.0,
+        "free_flow_kmph": 30,
+        "speed_ratio": 0.43,
+        "congestion_level": "heavy",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e7",
+        "speed_kmph": 8.0,
+        "free_flow_kmph": 25,
+        "speed_ratio": 0.32,
+        "congestion_level": "heavy",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e8",
+        "speed_kmph": 16.0,
+        "free_flow_kmph": 30,
+        "speed_ratio": 0.53,
+        "congestion_level": "moderate",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e9",
+        "speed_kmph": 22.0,
+        "free_flow_kmph": 40,
+        "speed_ratio": 0.55,
+        "congestion_level": "moderate",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      },
+      {
+        "segment_id": "e10",
+        "speed_kmph": 11.0,
+        "free_flow_kmph": 25,
+        "speed_ratio": 0.44,
+        "congestion_level": "heavy",
+        "rain": false,
+        "source": "SIMULATED",
+        "timestamp_utc": "2026-11-10T03:30:00Z"
+      }
+    ]
+  },
+  "error": null
+}
