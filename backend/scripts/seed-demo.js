@@ -92,10 +92,10 @@ const readJson = (f) => JSON.parse(fs.readFileSync(path.join(DIR, f), "utf8"));
           console.log(`  duplicate pair: #${id} ~ #${other.id} (score ${res.score})`);
         }
       }
-      saved.push({ ...me, id });
+      saved.push({ ...me, id, verified });
     }
     await client.query("COMMIT");
-    if (saved.length) console.log(`Incidents: ${saved.length} added (${incidents.filter((i) => i.status === "verified").length} verified), ${dupPairs} duplicate pair(s) found`);
+    if (saved.length) console.log(`Incidents: ${saved.length} added (${saved.filter((x) => x.verified).length} verified), ${dupPairs} duplicate pair(s) found`);
     console.log("Log in with any seeded email and the password in users.json.");
   } catch (err) {
     await client.query("ROLLBACK");

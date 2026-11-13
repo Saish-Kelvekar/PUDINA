@@ -24,7 +24,8 @@ npm run test:db                   # check the database connection
 psql -U postgres -d trafficvision -f migrations/001_init.sql
 node scripts/load-graph.js        # roads from GRAPH_PATH
 node scripts/load-traffic.js      # traffic from TRAFFIC_PATH
-node scripts/seed-demo.js --reset # demo users + incidents (fresh demo)
+node scripts/seed-demo.js --reset # demo users + incidents (fresh demo)   = npm run seed
+npm run demo:check                # plays the whole demo against the running server
 
 python scripts/make_mocks.py      # rebuild mocks (from the repo root: python backend/scripts/make_mocks.py)
 ```
@@ -41,4 +42,4 @@ GRAPH_PATH=../data/graph.json
 TRAFFIC_PATH=../data/traffic.csv
 ```
 
-The API is described in `docs/API.md`. If M3's ML service is not running, predictions use the baseline and emergency routing assumes 20 s per red light; only `/signals/simulate` needs it.
+The API is described in `docs/API.md`; how routes are calculated in `docs/ROUTING.md`. If M3's ML service is not running, predictions use the baseline and emergency routing assumes 20 s per red light; only `/signals/simulate` needs it.
