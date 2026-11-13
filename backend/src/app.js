@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const mapRoutes = require("./routes/mapRoutes");
 const trafficRoutes = require("./routes/trafficRoutes");
 const routeRoutes = require("./routes/routeRoutes");
+const incidentRoutes = require("./routes/incidentRoutes");
 
 const app = express();
 app.use(cors());          // lets the React app (another port) call us
@@ -28,6 +29,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/map", mapRoutes);
 app.use("/api/traffic", trafficRoutes);
 app.use("/api/routes", routeRoutes);
+app.use("/api/incidents", incidentRoutes);
 // New routes go here, above the 404 handler
 
 // ---------- 2. 404: no route matched ----------

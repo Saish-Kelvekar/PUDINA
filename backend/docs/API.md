@@ -155,9 +155,11 @@ Needs login. Errors: `VALIDATION_ERROR` (bad points or weights, or source = dest
   "lat": 12.9046, "lng": 77.5912, "reported_severity": "high", "lanes_blocked": 0, "is_closure": false }
 ```
 `category`: `accident`, `breakdown`, `roadwork`, `flooding`, `closure`, `event`, `other`. `reported_severity`: `low`, `medium`, `high`.
-The backend finds the nearest segment, estimates severity (see below), looks for duplicates and returns `{ incident, possible_duplicates }` (a count). New incidents start as `pending` and **do not change routes until verified**.
+The backend finds the nearest road (the point must be within **200 m** of one, and `lanes_blocked` can't be more than that road's lanes), estimates severity (see below), looks for duplicates and returns `{ incident, possible_duplicates }` (a count). New incidents start as `pending` and **do not change routes until verified**. `category: "closure"` always sets `is_closure: true`. Needs login.
 
-`GET /incidents` query (all optional): `status=pending,verified`, `category=accident`, `since=<ISO time>`. Returns `{ count, incidents }`. Default: everything except `rejected` and `merged`.
+⏳ Until Phase 3: `estimated_severity` is `null` (routing uses `reported_severity`) and `possible_duplicates` is `null`. M1: show "—" for both.
+
+`GET /incidents` query (all optional): `status=pending,verified`, `category=accident`, `since=<ISO time>`. Returns `{ count, incidents }`. Default: `pending`, `verified` and `resolved` (everything except `rejected` and `merged`), newest first.
 `GET /incidents/:id` returns `{ incident, logs }`.
 
 Incident object:
