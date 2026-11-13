@@ -62,6 +62,8 @@ The mocks are generated from Member 3's `data/sample/graph.json` and `data/sampl
 | 2.1 | GET | `/auth/me` | any | `auth_me.json` |
 | 2.2 | GET | `/map/graph` | public | `map_graph.json` |
 | 2.3 | GET | `/traffic/flow` | public | `traffic_flow.json` |
+| 2.3 | GET | `/traffic/clock` ⭐ | public | — |
+| 2.3 | POST | `/traffic/clock` ⭐ | admin | — |
 | 2.4 | POST | `/routes/compare` | any | `routes_compare.json` |
 | 2.5 | POST | `/incidents` | any | `incident_create.json` |
 | 2.5 | GET | `/incidents` | public | `incidents_list.json` |
@@ -103,6 +105,9 @@ Edge rule agreed with M3: **each road appears once.** `oneway: false` means it c
 Optional query: `?time=2026-11-10T03:30:00Z` (defaults to the simulation clock).
 Returns `{ sim_time_utc, source, last_updated, segments: [ { segment_id, speed_kmph, free_flow_kmph, speed_ratio, congestion_level, rain, source, timestamp_utc } ] }`.
 Segments with no data are returned with `congestion_level: "no_data"` and `speed_kmph: null`.
+`data_time_utc` is the CSV time step actually used: the newest step that is not after `sim_time_utc` (or `null` if there is no data that early).
+
+**Simulation clock** ⭐: `GET /traffic/clock` returns `{ sim_time_utc, step_minutes: 15, data_from_utc, data_until_utc, rows }`. Admin only: `POST /traffic/clock` with `{ "action": "next" }`, `{ "action": "prev" }` or `{ "time": "<ISO>" }` moves it (snapped to a 15-minute step). Useful in the demo to move from 08:00 to 09:00 and show traffic getting worse.
 
 ### 2.4 `POST /routes/compare`
 
@@ -130,13 +135,17 @@ Each route:
 | `congestion_pct` | length-weighted average of (1 − speed ratio) × 100 |
 | `signals_on_route` | signalised junctions passed (not counting start/end) |
 | `incident_ids`, `incident_count` | verified incidents on the route |
-| `closure_warnings` | text list, e.g. closed roads that were avoided |
+| `closure_warnings` | text list: verified closed roads that touch the route (so it went around them) |
 | `fuel_litres` | km × 0.07 × (1 + 0.5 × congestion share) |
 | `reliability` | 100 − 10 per incident − 30 × share of length in heavy/severe traffic |
 | `score`, `score_breakdown` | 0–100, min-max normalised weighted sum; breakdown per factor |
 | `rank`, `recommended`, `explanation` | explanation names the 2 strongest factors |
 
-Edge cost rules: travel time = length ÷ speed; verified incident adds 60 / 180 / 300 s for low / medium / high; a closure makes the edge unusable. Errors: `NO_ROUTE` if no path.
+Edge cost rules: travel time = length ÷ speed, plus 20 s at each signalised junction passed; verified incident adds 60 / 180 / 300 s for low / medium / high; a closure makes the edge unusable. Roads with no traffic data use their free-flow speed. All numbers live in `backend/src/config/constants.js`.
+
+Per type: **fastest** = time · **shortest** = metres · **least_congested** = time × (1 + 3 × (1 − speed ratio)) · **safest** = time + 5 × incident delay + 120 s per incident · **eco** = fuel.
+
+Needs login. Errors: `VALIDATION_ERROR` (bad points or weights, or source = destination), `NOT_FOUND` (unknown `node_id`), `NO_ROUTE` (422) if no path. Every comparison is saved in `route_comparisons`.
 
 ### 2.5 Incidents
 
@@ -146,9 +155,11 @@ Edge cost rules: travel time = length ÷ speed; verified incident adds 60 / 180 
   "lat": 12.9046, "lng": 77.5912, "reported_severity": "high", "lanes_blocked": 0, "is_closure": false }
 ```
 `category`: `accident`, `breakdown`, `roadwork`, `flooding`, `closure`, `event`, `other`. `reported_severity`: `low`, `medium`, `high`.
-The backend finds the nearest segment, estimates severity (see below), looks for duplicates and returns `{ incident, possible_duplicates }` (a count). New incidents start as `pending` and **do not change routes until verified**.
+The backend finds the nearest road (the point must be within **200 m** of one, and `lanes_blocked` can't be more than that road's lanes), estimates severity (see below), looks for duplicates and returns `{ incident, possible_duplicates }` (a count). New incidents start as `pending` and **do not change routes until verified**. `category: "closure"` always sets `is_closure: true`. Needs login.
 
-`GET /incidents` query (all optional): `status=pending,verified`, `category=accident`, `since=<ISO time>`. Returns `{ count, incidents }`. Default: everything except `rejected` and `merged`.
+⏳ Until Phase 3: `estimated_severity` is `null` (routing uses `reported_severity`) and `possible_duplicates` is `null`. M1: show "—" for both.
+
+`GET /incidents` query (all optional): `status=pending,verified`, `category=accident`, `since=<ISO time>`. Returns `{ count, incidents }`. Default: `pending`, `verified` and `resolved` (everything except `rejected` and `merged`), newest first.
 `GET /incidents/:id` returns `{ incident, logs }`.
 
 Incident object:
