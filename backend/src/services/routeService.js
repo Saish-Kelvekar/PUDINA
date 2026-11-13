@@ -58,4 +58,4 @@ async function compare({ source, destination, weights, userId }) {
   };
 }
 
-module.exports = { compare };
+module.exports = { compare, resolvePoint };

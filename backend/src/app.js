@@ -9,6 +9,8 @@ const trafficRoutes = require("./routes/trafficRoutes");
 const routeRoutes = require("./routes/routeRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
 const predictionRoutes = require("./routes/predictionRoutes");
+const signalRoutes = require("./routes/signalRoutes");
+const emergencyRoutes = require("./routes/emergencyRoutes");
 const ml = require("./services/mlClient");
 
 const app = express();
@@ -40,6 +42,8 @@ app.use("/api/traffic", trafficRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/incidents", incidentRoutes);
 app.use("/api/predictions", predictionRoutes);
+app.use("/api/signals", signalRoutes);
+app.use("/api/emergency", emergencyRoutes);
 // New routes go here, above the 404 handler
 
 // ---------- 2. 404: no route matched ----------
