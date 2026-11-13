@@ -1,206 +1,290 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { MapView } from '@/components/MapView';
-import { StatCard } from '@/components/ui/StatCard';
+import { StatStrip } from '@/components/ui/StatCard';
+import { PageHeading, SectionLabel } from '@/components/layout/PageHeading';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-
+import { Select } from '@/components/ui/Select';
+import { MapView, type MapPin } from '@/components/MapView';
 import { apiClient } from '@/api/api';
-import type { SignalResult } from '@/types';
+import type { EdgeCongestion, Junction, SignalSimulation } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
-import { formatMinutes } from '@/lib/colors';
-import { Signal, Play } from '@/icons';
-
-const DEFAULT_APPROACHES = [
-  { name: 'North', vehicle_density: 35, queue_length: 12, lanes: 2 },
-  { name: 'South', vehicle_density: 28, queue_length: 9, lanes: 2 },
-  { name: 'East', vehicle_density: 42, queue_length: 16, lanes: 2 },
-  { name: 'West', vehicle_density: 20, queue_length: 6, lanes: 2 },
-];
+import { Play, Timer, Gauge, Clock, TrendingDown, Siren, ArrowRight } from 'lucide-react';
+import { istTime } from '@/lib/utils';
 
 export default function SignalOptimization() {
   const { add } = useToast() as any;
-  const [approaches, setApproaches] = useState<Array<{ name: string; vehicle_density: number; queue_length: number; lanes: number }>>(DEFAULT_APPROACHES);
-  const [currentCycle, setCurrentCycle] = useState(90);
-
-  const [result, setResult] = useState<SignalResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [junctions, setJunctions] = useState<Junction[]>([]);
+  const [edges, setEdges] = useState<EdgeCongestion[]>([]);
+  const [junctionId, setJunctionId] = useState('');
+  const [mode, setMode] = useState<'optimize' | 'emergency'>('optimize');
+  const [approachId, setApproachId] = useState('');
+  const [result, setResult] = useState<SignalSimulation | null>(null);
+  const [loadingList, setLoadingList] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOptimize = useCallback(async () => {
-    setLoading(true);
+  const loadJunctions = useCallback(async () => {
+    setLoadingList(true);
+    setListError(null);
+    try {
+      const [list, flow] = await Promise.all([apiClient.getJunctions(), apiClient.getTrafficFlow().catch(() => [])]);
+      setJunctions(list);
+      setEdges(flow);
+      const preferred = list.find((j) => j.junction_id === 'J-n2666') ?? list[0];
+      if (preferred) {
+        setJunctionId(preferred.junction_id);
+        setApproachId(preferred.approaches[0]?.approach_id ?? '');
+      }
+    } catch (err: any) {
+      setListError(err.message || 'Could not load junctions');
+    } finally {
+      setLoadingList(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadJunctions();
+  }, [loadJunctions]);
+
+  const junction = junctions.find((j) => j.junction_id === junctionId) ?? null;
+  const approachLabel = useMemo(() => {
+    const m = new Map<string, string>();
+    junction?.approaches.forEach((a) => m.set(a.approach_id, a.label));
+    return (id: string) => m.get(id) ?? id;
+  }, [junction]);
+
+  const run = useCallback(async () => {
+    if (!junction) return;
+    setRunning(true);
     setError(null);
     try {
-      const res = await apiClient.optimizeSignals(approaches, currentCycle);
+      const res = await apiClient.simulateSignal(junction.junction_id, mode, mode === 'emergency' ? approachId : undefined);
       setResult(res);
-      add?.('success', 'Signal optimized', 'New timing plan computed');
+      add?.('success', 'Simulation complete', `${junction.label}: ${res.improvement.avg_wait_change_pct}% average wait`);
     } catch (err: any) {
-      setError(err.message || 'Optimization failed');
-      add?.('error', 'Optimization failed', 'Could not compute signal timings');
+      setResult(null);
+      const msg = err.code === 'ML_UNAVAILABLE'
+        ? 'The ML service is not running. Start it (port 8000) to simulate signals.'
+        : err.message || 'Simulation failed';
+      setError(msg);
+      add?.('error', 'Simulation failed', msg);
     } finally {
-      setLoading(false);
+      setRunning(false);
     }
-  }, [approaches, currentCycle, add]);
+  }, [junction, mode, approachId, add]);
 
-  const updateApproach = (index: number, field: string, value: string) => {
-    const next = approaches.map((a, i) => (i === index ? { ...a, [field]: value === '' ? 0 : parseFloat(value) } : a));
-    setApproaches(next);
-    setResult(null);
-  };
+  if (loadingList) return <LoadingState message="Loading signalised junctions…" />;
+  if (listError) return <ErrorState title="Unable to load junctions" message={listError} onRetry={loadJunctions} />;
 
-  if (loading && !result) {
-    return <LoadingState message="Optimising signal timings…" />;
-  }
-  if (error && !result) {
-    return <ErrorState title="Optimization failed" message={error} onRetry={fetchOptimize} />;
-  }
+  const maxGreen = result
+    ? Math.max(1, ...result.current.phases.map((p) => p.green_s), ...result.optimized.phases.map((p) => p.green_s))
+    : 1;
+  const queueBy = new Map(result?.queues.map((q) => [q.approach_id, q]) ?? []);
+  const reasonBy = new Map(result?.reasons.map((r) => [r.approach_id, r.text]) ?? []);
+  const pins: MapPin[] = junction ? [{ lat: junction.lat, lng: junction.lng, label: '●', color: '#B8453A', title: junction.label }] : [];
+  const waitChange = result?.improvement.avg_wait_change_pct ?? 0;
 
   return (
-    <div className="flex h-full w-full">
-      {/* Left: inputs */}
-      <aside className="w-80 bg-slate-900/95 backdrop-blur border-r border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <Signal className="h-5 w-5 text-blue-400" /> Signal Optimization
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">Adaptive timing simulation</p>
-        </div>
+    <div className="h-full overflow-y-auto p-3 md:p-5">
+      <div className="grid gap-4 lg:h-full lg:grid-cols-[360px_minmax(0,1fr)]">
+        {/* Inputs */}
+        <aside className="space-y-5 rounded-4xl border border-white/80 bg-white/45 p-6 lg:overflow-y-auto">
+          <PageHeading
+            eyebrow="Adaptive — Timing — Simulation"
+            title="Signals In"
+            accent="Sync"
+            description="Pick a signalised junction. The optimiser re-splits green time from live queues and simulates the result."
+          />
 
-        <div className="p-4 space-y-4 overflow-y-auto">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Current cycle length (sec)</label>
-            <Input
-              type="number"
-              value={currentCycle}
-              onChange={(e) => setCurrentCycle(parseInt(e.target.value) || 90)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Approaches</label>
-            <p className="text-[10px] text-slate-500">Set density, queue &amp; lanes per approach</p>
-            {approaches.map((ap, i) => (
-              <div key={i} className="bg-slate-800 border border-slate-700 rounded-lg p-2.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-300">{ap.name}</span>
-                  <button
-                    onClick={() => setApproaches(approaches.filter((_, idx) => idx !== i))}
-                    className="text-slate-500 hover:text-red-400"
-                    title="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <Input
-                    label="Density"
-                    type="number"
-                    value={ap.vehicle_density}
-                    onChange={(e) => updateApproach(i, 'vehicle_density', e.target.value)}
-                    className="px-2 py-1.5 text-xs"
-                  />
-                  <Input
-                    label="Queue"
-                    type="number"
-                    value={ap.queue_length}
-                    onChange={(e) => updateApproach(i, 'queue_length', e.target.value)}
-                    className="px-2 py-1.5 text-xs"
-                  />
-                  <Input
-                    label="Lanes"
-                    type="number"
-                    value={ap.lanes}
-                    onChange={(e) => updateApproach(i, 'lanes', e.target.value)}
-                    className="px-2 py-1.5 text-xs"
-                  />
-                </div>
-              </div>
+          <Select
+            label="Junction"
+            value={junctionId}
+            onChange={(e) => {
+              const j = junctions.find((x) => x.junction_id === e.target.value);
+              setJunctionId(e.target.value);
+              setApproachId(j?.approaches[0]?.approach_id ?? '');
+              setResult(null);
+            }}
+          >
+            {junctions.map((j) => (
+              <option key={j.junction_id} value={j.junction_id}>
+                {j.label} ({j.junction_id})
+              </option>
             ))}
-            <Button variant="ghost" size="sm" onClick={() => setApproaches([...approaches, { name: `Approach ${approaches.length + 1}`, vehicle_density: 20, queue_length: 8, lanes: 1 }])}>
-              + Add approach
-            </Button>
+          </Select>
+
+          <div className="space-y-1.5">
+            <span className="block pl-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">Mode</span>
+            <div className="segmented">
+              <button type="button" data-active={mode === 'optimize'} onClick={() => { setMode('optimize'); setResult(null); }}>
+                Optimise
+              </button>
+              <button type="button" data-active={mode === 'emergency'} onClick={() => { setMode('emergency'); setResult(null); }}>
+                Emergency priority
+              </button>
+            </div>
           </div>
 
-          <Button onClick={fetchOptimize} variant="primary" className="w-full" loading={loading}>
-            <Play className="mr-2 h-4 w-4" /> Compute optimized timings
+          {mode === 'emergency' && junction && (
+            <Select label="Emergency vehicle arrives from" value={approachId} onChange={(e) => setApproachId(e.target.value)}>
+              {junction.approaches.map((a) => (
+                <option key={a.approach_id} value={a.approach_id}>{a.label}</option>
+              ))}
+            </Select>
+          )}
+
+          {junction && (
+            <div className="space-y-2">
+              <SectionLabel right={<span className="text-[11px] text-ink-faint">{junction.approaches.length}</span>}>Approaches</SectionLabel>
+              {junction.approaches.map((a, i) => (
+                <div key={a.approach_id} className="flex items-center gap-2.5 rounded-2xl bg-white/55 px-3.5 py-2 text-xs">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] text-sand-50">{i + 1}</span>
+                  <span className="truncate text-ink">{a.label}</span>
+                </div>
+              ))}
+              <p className="px-1 text-[11px] text-ink-faint">
+                Current plan: {junction.current_timing.cycle_s}s cycle, {junction.current_timing.green_s_each}s green each.
+              </p>
+            </div>
+          )}
+
+          <Button onClick={run} variant={mode === 'emergency' ? 'danger' : 'primary'} size="lg" className="w-full" loading={running} disabled={!junction}>
+            {mode === 'emergency' ? <Siren className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+            {mode === 'emergency' ? 'Simulate emergency priority' : 'Optimise & simulate'}
           </Button>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-900/20 border border-red-500/30 text-sm text-red-300">
+            <div className="rounded-2xl border border-traffic-red/25 bg-traffic-red/10 px-4 py-3 text-sm text-traffic-red">
               {error}
             </div>
           )}
 
-          <div className="mt-3 p-3 rounded-lg bg-slate-800 border border-slate-700">
-            <p className="text-[10px] text-slate-400">
-              Simulation only — does not control real traffic lights. Uses Webster&rsquo;s method with queue-based splits.
-            </p>
-          </div>
-        </div>
-      </aside>
+          <p className="px-1 text-[11px] leading-relaxed text-ink-faint">
+            Simulation only — does not control real traffic lights. Queues come from the simulated traffic at the current sim time.
+          </p>
+        </aside>
 
-      {/* Right: results */}
-      <div className="flex-1 relative min-w-0 flex flex-col">
-        <MapView edges={[]} incidents={[]} routes={[]} />
-
-        <div className="h-1/2 border-t border-slate-800 p-4 overflow-y-auto">
+        {/* Results */}
+        <div className="min-h-0 space-y-4 lg:overflow-y-auto">
           {!result ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-12 text-slate-500">
-              <Signal className="h-10 w-10 opacity-30 mb-3" />
-              <p className="text-sm">Configure approaches and compute optimised signal timings.</p>
+            <div className="grid min-h-[460px] gap-4 lg:h-full lg:grid-rows-[minmax(0,1fr)_auto]">
+              <section className="relative h-[340px] overflow-hidden rounded-4xl border border-white/80 lg:h-auto">
+                <MapView
+                  key={junctionId}
+                  edges={edges}
+                  incidents={[]}
+                  routes={[]}
+                  pins={pins}
+                  center={junction ? [junction.lat, junction.lng] : undefined}
+                  zoom={17}
+                />
+              </section>
+              <div className="rounded-4xl border border-white/80 bg-white/40 p-6 text-center">
+                <p className="eyebrow">{running ? 'Simulating…' : 'Ready'}</p>
+                <h3 className="display mt-2 text-2xl">
+                  {junction?.label ?? 'Choose a junction'}, then <span className="accent-word">{mode === 'emergency' ? 'clear the way' : 'optimise'}</span>.
+                </h3>
+              </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 mb-2">
-                <StatCard title="Current cycle" value={`${result.current_cycle_sec}s`} />
-                <StatCard title="Optimised cycle" value={`${result.optimized_cycle_sec}s`} trend={{ label: 'lost time', value: result.total_lost_time_sec, positive: false }} />
-                <StatCard title="Avg wait before" value={formatMinutes(result.summary.avg_wait_before_sec)} />
-                <StatCard title="Avg wait after" value={formatMinutes(result.summary.avg_wait_after_sec)} trend={{ label: 'improvement', value: result.summary.total_improvement_pct, positive: true }} />
-              </div>
+            <>
+              <StatStrip
+                items={[
+                  { icon: <Timer className="h-4 w-4" />, value: `${result.current.cycle_s}s → ${result.optimized.cycle_s}s`, label: 'Cycle length' },
+                  { icon: <Clock className="h-4 w-4" />, value: `${result.current.avg_wait_s}s → ${result.optimized.avg_wait_s}s`, label: 'Average wait' },
+                  { icon: <Gauge className="h-4 w-4" />, value: `${result.current.max_queue} → ${result.optimized.max_queue}`, label: 'Max queue (cars)' },
+                  { icon: <TrendingDown className="h-4 w-4" />, value: `${result.current.throughput} → ${result.optimized.throughput}`, label: `Throughput · ${result.cycles} cycles` },
+                ]}
+              />
 
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Phase-by-phase comparison</h4>
-                <div className="space-y-2">
-                  {result.phases.map((p, i) => (
-                    <div key={i} className="border-b border-slate-700 pb-2 last:border-0">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium text-slate-200">{p.approach}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">{p.improvement_pct}% improvement</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2 text-xs">
-                        <div>
-                          <div className="text-[10px] text-slate-500">Current green</div>
-                          <div className="text-slate-300 font-mono">{p.current_green_sec}s</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-slate-500">Optimised green</div>
-                          <div className="text-slate-300 font-mono">{p.optimized_green_sec}s</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-slate-500">Current wait</div>
-                          <div className="text-slate-300 font-mono">{p.current_wait_sec}s</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-slate-500">Optimised wait</div>
-                          <div className="text-slate-300 font-mono">{p.optimized_wait_sec}s</div>
-                        </div>
-                      </div>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                <section className="rounded-4xl border border-white/80 bg-white/55 p-6">
+                  <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                      <p className="eyebrow">{junction?.label ?? result.junction_name ?? result.junction_id} · as of {istTime(result.as_of_utc)} IST</p>
+                      <h3 className="display text-2xl">Green time by approach</h3>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="flex items-center gap-3 text-[11px] text-ink-muted">
+                      <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-sand-400" /> Current</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-ink" /> Optimised</span>
+                    </div>
+                  </div>
+                  <div className="space-y-5">
+                    {result.optimized.phases.map((p) => {
+                      const before = result.current.phases.find((c) => c.approach_id === p.approach_id);
+                      const q = queueBy.get(p.approach_id);
+                      const isEmergencyApproach = result.mode === 'emergency' && p.approach_id === approachId;
+                      return (
+                        <div key={p.approach_id}>
+                          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                              {approachLabel(p.approach_id)}
+                              {isEmergencyApproach && <Siren className="h-3.5 w-3.5 text-traffic-red" />}
+                            </span>
+                            {q && (
+                              <span className="text-[11px] text-ink-muted">
+                                {q.queue_now} queued · {q.arrivals_per_min}/min arriving
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-3">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-sand-200">
+                                <div className="h-full rounded-full bg-sand-400" style={{ width: `${((before?.green_s ?? 0) / maxGreen) * 100}%` }} />
+                              </div>
+                              <span className="w-12 text-right font-mono text-[11px] text-ink-muted">{before?.green_s ?? '—'}s</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-sand-200">
+                                <div className="h-full rounded-full bg-ink" style={{ width: `${(p.green_s / maxGreen) * 100}%` }} />
+                              </div>
+                              <span className="w-12 text-right font-mono text-[11px] text-ink">{p.green_s}s</span>
+                            </div>
+                          </div>
+                          {reasonBy.get(p.approach_id) && (
+                            <p className="mt-1.5 flex gap-1.5 text-[11px] leading-relaxed text-ink-muted">
+                              <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-bronze" />
+                              {reasonBy.get(p.approach_id)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
 
-              <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-green-300 uppercase tracking-wider mb-2">Result</h4>
-                <p className="text-sm text-slate-200">
-                  Optimising signal splits reduces average waiting time by{' '}
-                  <span className="font-medium text-green-400">{result.summary.total_improvement_pct}%</span>{'&nbsp;'}
-                  and improves estimated throughput by{' '}
-                  <span className="font-medium text-green-400">{result.summary.throughput_increase_pct}%</span>.
-                </p>
-                <p className="text-[10px] text-slate-500 mt-1">Green time is distributed in proportion to approach volume (Webster&rsquo;s method).</p>
+                <section className="glass-dark flex flex-col justify-between rounded-4xl p-6">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-sand-300">Result</p>
+                    <p className="mt-3 font-display text-6xl font-light text-bronze-light">
+                      {waitChange > 0 ? '+' : ''}{waitChange}%
+                    </p>
+                    <p className="mt-1 text-sm text-sand-200">
+                      average wait ({result.improvement.avg_wait_saved_s}s {result.improvement.avg_wait_saved_s >= 0 ? 'saved' : 'added'} per vehicle)
+                    </p>
+                    <div className="my-5 h-px bg-white/10" />
+                    <p className="font-display text-3xl font-light text-sand-50">
+                      {result.improvement.throughput_change_pct > 0 ? '+' : ''}{result.improvement.throughput_change_pct}%
+                    </p>
+                    <p className="mt-1 text-sm text-sand-200">throughput</p>
+                    {result.red_wait_saved_s != null && (
+                      <>
+                        <div className="my-5 h-px bg-white/10" />
+                        <p className="font-display text-3xl font-light text-traffic-red">−{result.red_wait_saved_s}s</p>
+                        <p className="mt-1 text-sm text-sand-200">red-light wait for the emergency vehicle</p>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setResult(null)}
+                    className="mt-6 rounded-full bg-sand-50 px-4 py-2 text-xs font-semibold text-ink hover:bg-white"
+                  >
+                    Back to map
+                  </button>
+                </section>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>

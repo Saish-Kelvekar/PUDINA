@@ -2,229 +2,232 @@ import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
 import { apiClient } from '@/api/api';
 import type { EdgeCongestion, RouteResult } from '@/types';
 import { formatETA, congestionColor, congestionLabel } from '@/lib/colors';
-import { Route, Sparkles, TrendingUp, ArrowLeft, ArrowRight } from '@/icons';
-
-const NODES: { id: string; name: string }[] = [
-  { id: 'central_hub', name: 'Central Hub' },
-  { id: 'north_gate', name: 'North Gate' },
-  { id: 'south_plaza', name: 'South Plaza' },
-  { id: 'east_terminal', name: 'East Terminal' },
-  { id: 'west_market', name: 'West Market' },
-  { id: 'tech_park', name: 'Tech Park' },
-  { id: 'old_town', name: 'Old Town' },
-  { id: 'airport_rd', name: 'Airport Road' },
-  { id: 'hospital_jn', name: 'Hospital Jn' },
-  { id: 'university_av', name: 'University Ave' },
-  { id: 'stadium_rd', name: 'Stadium Road' },
-  { id: 'lake_view', name: 'Lake View' },
-  { id: 'industrial_zone', name: 'Industrial Zone' },
-  { id: 'inner_ring_north', name: 'Inner Ring N' },
-  { id: 'inner_ring_south', name: 'Inner Ring S' },
-  { id: 'metro_station', name: 'Metro Station' },
-  { id: 'silk_board', name: 'Silk Board' },
-  { id: 'electronic_city', name: 'Electronic City' },
-];
+import { Sparkles, ArrowUpDown, Fuel, AlertTriangle, ShieldCheck, TrafficCone, Info } from 'lucide-react';
+import { MapStage, MapChip } from '@/components/layout/MapStage';
+import { PageHeading } from '@/components/layout/PageHeading';
+import {
+  RoutePointPicker,
+  type PickedPoint,
+  pickPins,
+  pointFromClick,
+  nextPicks,
+  toRoutePoint,
+} from '@/components/RoutePointPicker';
+import { cn } from '@/lib/utils';
 
 export default function RoutePlanner() {
   const { add } = useToast() as any;
-  const [source, setSource] = useState('central_hub');
-  const [destination, setDestination] = useState('electronic_city');
+  const [from, setFrom] = useState<PickedPoint | null>(null);
+  const [to, setTo] = useState<PickedPoint | null>(null);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
   const [edges, setEdges] = useState<EdgeCongestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recommended, setRecommended] = useState<RouteResult | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     apiClient.getTrafficFlow().then(setEdges).catch(() => {});
   }, []);
 
+  const setPoints = (a: PickedPoint | null, b: PickedPoint | null) => {
+    setFrom(a);
+    setTo(b);
+    setRoutes([]);
+    setError(null);
+  };
+
   const fetchRoutes = useCallback(async () => {
-    if (!source || !destination || source === destination) {
-      setError('Please select different source and destination');
+    if (!from || !to) {
+      setError('Pick a start (A) and a destination (B) — click the map or use a quick pick.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const data = await apiClient.compareRoutes(source, destination);
-      const list = Object.values(data).filter(Boolean) as RouteResult[];
-      setRoutes(list);
-      setRecommended(list.find((r) => r.label.toLowerCase().includes('ai')) || list[0]);
-      await apiClient.getTrafficFlow().then(setEdges);
+      const data = await apiClient.compareRoutes(toRoutePoint(from), toRoutePoint(to));
+      setRoutes(data.routes);
+      setSelectedId(data.recommended_route_id ?? data.routes[0]?.id ?? null);
     } catch (err: any) {
+      setRoutes([]);
       setError(err.message || 'Failed to calculate routes');
-      add?.('error', 'Route calculation failed', 'Could not compute routes');
+      add?.('error', 'Route calculation failed', err.message);
     } finally {
       setLoading(false);
     }
-  }, [source, destination, add]);
+  }, [from, to, add]);
 
-  const handleSwap = () => {
-    setSource(destination);
-    setDestination(source);
+  const handleMapClick = async (lat: number, lng: number) => {
+    const p = await pointFromClick(lat, lng);
+    const [a, b] = nextPicks(from, to, p);
+    setPoints(a, b);
   };
 
-  const handleRecommend = (r: RouteResult) => setRecommended(r);
-
-  if (loading && routes.length === 0) {
-    return <div className="flex h-full items-center justify-center"><p className="text-slate-400">Calculating routes…</p></div>;
-  }
-  if (error && routes.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <button onClick={fetchRoutes} className="text-blue-400 underline">
-          Try again
-        </button>
-      </div>
-    );
-  }
+  // Highlight the selected card's route on the map; dim the rest.
+  const mapRoutes = routes
+    .filter((r) => !r.same_path_as || r.id === selectedId)
+    .map((r) => ({ ...r, recommended: r.id === selectedId }));
 
   return (
-    <div className="flex h-full w-full">
-      <aside className="w-80 bg-slate-900/95 backdrop-blur border-r border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <Route className="h-5 w-5 text-blue-400" /> Route Planner
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">Compare routes between junctions</p>
+    <MapStage
+      map={
+        <MapView
+          edges={edges}
+          incidents={[]}
+          routes={mapRoutes}
+          onMapClick={handleMapClick}
+          pins={pickPins(from, to)}
+        />
+      }
+      overlay={
+        <div className="absolute left-4 top-4 z-10 lg:left-[392px]">
+          <MapChip>
+            {from && to ? (
+              <>
+                <span className="max-w-[16rem] truncate">{from.label}</span>
+                <span className="text-ink-faint">→</span>
+                <span className="max-w-[16rem] truncate">{to.label}</span>
+              </>
+            ) : (
+              <>Click the map to set {from ? 'the destination (B)' : 'the start (A)'}</>
+            )}
+          </MapChip>
         </div>
+      }
+      panel={
+        <>
+          <PageHeading
+            eyebrow="Fastest — Shortest — Least congested"
+            title="Find Your"
+            accent="Way"
+            description="Pick two points and compare up to five routes, scored on time, congestion, incidents, fuel and reliability."
+          />
 
-        <div className="p-4 space-y-4 overflow-y-auto">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Source</label>
-            <Select value={source} onChange={(e) => setSource(e.target.value)} className="bg-slate-800 border-slate-600">
-              {NODES.map((n) => (
-                <option key={n.id} value={n.id}>{n.name}</option>
-              ))}
-            </Select>
-          </div>
+          <RoutePointPicker from={from} to={to} onChange={setPoints} defaults={{ from: 'n2509', to: 'n2563' }} />
 
-          <div className="flex items-center justify-center">
+          <div className="flex gap-2">
+            <Button onClick={fetchRoutes} variant="primary" size="lg" className="flex-1" loading={loading}>
+              <Sparkles className="mr-2 h-4 w-4" /> Compare routes
+            </Button>
             <button
-              onClick={handleSwap}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors"
-              title="Swap source and destination"
-              aria-label="Swap source and destination"
+              type="button"
+              onClick={() => setPoints(to, from)}
+              disabled={!from || !to}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/70 text-ink transition-transform hover:rotate-180 disabled:opacity-40"
+              title="Swap start and destination"
+              aria-label="Swap start and destination"
             >
-              <span className="flex items-center gap-1 text-xs font-medium"><ArrowLeft className="h-3.5 w-3.5" /><ArrowRight className="h-3.5 w-3.5" /></span>
+              <ArrowUpDown className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Destination</label>
-            <Select value={destination} onChange={(e) => setDestination(e.target.value)} className="bg-slate-800 border-slate-600">
-              {NODES.map((n) => (
-                <option key={n.id} value={n.id}>{n.name}</option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-            <p className="text-xs font-medium text-slate-300 mb-3">Route weighting</p>
-            <div className="space-y-2">
-              {['time', 'congestion', 'distance'].map((key) => (
-                <div key={key} className="flex items-center justify-between">
-                  <span className="text-xs text-slate-300">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                  <span className="text-xs text-slate-500 w-8 text-right">33%</span>
-                </div>
-              ))}
-              <p className="text-[10px] text-slate-500 mt-1">Weights normalise to 100% before scoring.</p>
-            </div>
-          </div>
-
-          <Button onClick={fetchRoutes} variant="primary" className="w-full" loading={loading}>
-            <Sparkles className="mr-2 h-4 w-4" /> Calculate routes
-          </Button>
-
           {error && (
-            <div className="p-3 rounded-lg bg-red-900/20 border border-red-500/30 text-sm text-red-300">
+            <div className="rounded-2xl border border-traffic-red/25 bg-traffic-red/10 px-4 py-3 text-sm text-traffic-red">
               {error}
             </div>
           )}
-        </div>
-      </aside>
 
-      <div className="flex-1 relative min-w-0 flex flex-col">
-        <MapView edges={edges} incidents={[]} routes={routes} />
-
-        <div className="h-1/3 bg-slate-900 border-t border-slate-800 flex flex-col shrink-0 overflow-hidden">
-          <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-slate-400" /> Route options
-            </h3>
-            <span className="text-xs text-slate-500">{routes.length} routes calculated</span>
+          <p className="flex gap-2 px-1 text-[11px] leading-relaxed text-ink-faint">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            Clicked points snap to the nearest junction (within 300 m). Traffic is simulated.
+          </p>
+        </>
+      }
+      bottom={
+        routes.length === 0 ? (
+          <div className="glass flex items-center justify-between gap-4 rounded-3xl px-6 py-5">
+            <div>
+              <p className="eyebrow">Route options</p>
+              <p className="mt-1 font-display text-xl font-light">
+                {loading ? 'Calculating routes…' : <>Choose A &amp; B, then <span className="italic text-bronze">compare</span>.</>}
+              </p>
+            </div>
+            <Sparkles className="hidden h-6 w-6 text-bronze sm:block" />
           </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {routes.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                <p className="text-sm text-slate-400">Select source &amp; destination, then calculate.</p>
-              </div>
-            ) : (
-              routes.map((r) => {
-                const isRec = recommended?.label === r.label;
-                return (
-                  <div
-                    key={r.label}
-                    onClick={() => handleRecommend(r)}
-                    className={`cursor-pointer rounded-lg p-3 border transition-all ${
-                      isRec
-                        ? 'bg-blue-600/10 border-blue-500/30 shadow-[0_0_0_1px_rgba(37,99,235,0.2)]'
-                        : 'bg-slate-800 border-slate-700 hover:border-slate-600 hover:bg-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: r.color }} />
-                        <span className={`font-semibold text-slate-200 ${isRec ? 'text-blue-300' : ''}`}>
-                          {r.label}
-                        </span>
-                        {isRec && (
-                          <span className="text-[10px] bg-blue-600/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30">
-                            Recommended
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-mono text-slate-400">{formatETA(r.total_time_min)}</span>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-1 pt-1">
+            {routes.map((r) => {
+              const isSel = selectedId === r.id;
+              const twin = r.same_path_as ? routes.find((x) => x.id === r.same_path_as) : null;
+              return (
+                <button
+                  type="button"
+                  key={r.id ?? r.label}
+                  onClick={() => setSelectedId(r.id ?? null)}
+                  className={cn(
+                    'w-[300px] shrink-0 rounded-3xl p-5 text-left transition-all duration-200',
+                    isSel ? 'glass-dark' : 'glass hover:-translate-y-0.5',
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full ring-2 ring-white/70" style={{ backgroundColor: r.color }} />
+                      <span className={cn('text-[10px] font-semibold uppercase tracking-[0.2em]', isSel ? 'text-sand-300' : 'text-ink-muted')}>
+                        {r.recommended ? 'Recommended' : 'Option'}
+                      </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="bg-slate-800/50 rounded p-1.5">
-                        <div className="text-[10px] text-slate-500">Distance</div>
-                        <div className="text-slate-300">{r.total_distance_km} km</div>
-                      </div>
-                      <div className="bg-slate-800/50 rounded p-1.5">
-                        <div className="text-[10px] text-slate-500">Congestion</div>
-                        <div className="text-slate-300" style={{ color: congestionColor(r.avg_congestion) }}>
-                          {congestionLabel(r.avg_congestion)}
-                        </div>
-                      </div>
-                      <div className="bg-slate-800/50 rounded p-1.5">
-                        <div className="text-[10px] text-slate-500">Reliability</div>
-                        <div className="text-slate-300">{r.reliability_pct}%</div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex gap-2 text-[10px]">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Incidents: {r.incidents}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Fuel: {r.fuel_liters} L</span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300">Source: {r.source ?? 'SIMULATED'}</span>
-                    </div>
-                    {r.time_saved_min !== undefined && (
-                      <div className="mt-2 p-2 rounded bg-green-900/20 border border-green-500/30 text-xs text-green-300">
-                        Time saved vs fastest: {formatETA(r.time_saved_min)}
-                      </div>
+                    {twin && (
+                      <span className={cn('text-[10px]', isSel ? 'text-sand-300' : 'text-ink-faint')}>same path as {twin.label}</span>
                     )}
                   </div>
-                );
-              })
-            )}
+                  <p className={cn('mt-2 truncate font-display text-lg font-light leading-tight', isSel ? 'text-sand-50' : 'text-ink')}>{r.label}</p>
+                  <p className={cn('font-display text-4xl font-light', isSel ? 'text-bronze-light' : 'text-ink')}>
+                    {formatETA(r.total_time_min)}
+                  </p>
+
+                  <div className={cn('mt-4 grid grid-cols-3 border-t pt-3 text-xs', isSel ? 'border-white/10' : 'border-ink/10')}>
+                    <div>
+                      <div className={cn('text-[10px]', isSel ? 'text-sand-300' : 'text-ink-faint')}>Distance</div>
+                      <div className={isSel ? 'text-sand-50' : 'text-ink'}>{r.total_distance_km} km</div>
+                    </div>
+                    <div>
+                      <div className={cn('text-[10px]', isSel ? 'text-sand-300' : 'text-ink-faint')}>Congestion</div>
+                      <div className="font-semibold" style={{ color: congestionColor(r.avg_congestion) }}>
+                        {congestionLabel(r.avg_congestion)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className={cn('text-[10px]', isSel ? 'text-sand-300' : 'text-ink-faint')}>Reliability</div>
+                      <div className={isSel ? 'text-sand-50' : 'text-ink'}>{r.reliability_pct}%</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5 text-[10px]">
+                    {[
+                      { icon: <AlertTriangle className="h-3 w-3" />, text: `${r.incidents} incidents` },
+                      { icon: <Fuel className="h-3 w-3" />, text: `${r.fuel_liters} L fuel` },
+                      { icon: <TrafficCone className="h-3 w-3" />, text: `${r.signals_on_route ?? 0} signals` },
+                      { icon: <ShieldCheck className="h-3 w-3" />, text: r.source ?? 'SIMULATED' },
+                    ].map((chip) => (
+                      <span
+                        key={chip.text}
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-1',
+                          isSel ? 'bg-white/10 text-sand-200' : 'bg-white/70 text-ink-muted',
+                        )}
+                      >
+                        {chip.icon}
+                        {chip.text}
+                      </span>
+                    ))}
+                  </div>
+
+                  {r.explanation && (
+                    <p className={cn('mt-3 text-[11px] leading-relaxed', isSel ? 'text-sand-200' : 'text-ink-muted')}>{r.explanation}</p>
+                  )}
+                  {r.closure_warnings && r.closure_warnings.length > 0 && (
+                    <div className="mt-2 rounded-2xl bg-traffic-red/15 px-3 py-2 text-[11px] font-medium text-traffic-red">
+                      {r.closure_warnings.join(' · ')}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        </div>
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }

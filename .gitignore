@@ -33,6 +33,9 @@ ml-service/models/
 cache/
 data/cache/
 
+# Design reference images/video (local only; the login video is in Frontend/public/media)
+images/
+
 # OS / editor
 .DS_Store
 Thumbs.db

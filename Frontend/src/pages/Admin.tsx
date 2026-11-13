@@ -1,20 +1,29 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/Toast';
-import { MapView } from '@/components/MapView';
+import { MapView, type MapLine } from '@/components/MapView';
 import { StatCard } from '@/components/ui/StatCard';
-import { Button } from '@/components/ui/Button';
-import { apiClient } from '@/api/api';
-import type { Incident } from '@/types';
+import { Badge, StatusPill } from '@/components/ui/Badge';
+import { MapStage } from '@/components/layout/MapStage';
+import { PageHeading } from '@/components/layout/PageHeading';
+import { apiClient, loadGraph } from '@/api/api';
+import type { AdminOverview, DuplicatePair, Incident, NetworkImpact } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
-import { isoToLocalTime, statusColor } from '@/lib/colors';
-import { ShieldAlert, CheckCircle2, XCircle, MinusCircle, AlertTriangle, MapPin } from 'lucide-react';
+import { isoToLocalTime, statusColor, congestionColor } from '@/lib/colors';
+import { istTime } from '@/lib/utils';
+import { useLiveIncidents } from '@/lib/realtime';
+import { CheckCircle2, XCircle, MinusCircle, AlertTriangle, MapPin, GitMerge, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+
+const LEVEL_AFTER: Record<string, number> = { flowing: 0.1, moderate: 0.4, heavy: 0.65, severe: 0.9, closed: 1 };
 
 export default function Admin() {
   const { add } = useToast() as any;
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [duplicates, setDuplicates] = useState<Array<{ id: string; incidents: Incident[]; score: number }>>([]);
-  const [overview, setOverview] = useState<any>(null);
-  const [impact, setImpact] = useState<any>(null);
+  const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [impact, setImpact] = useState<NetworkImpact | null>(null);
+  const [impactLines, setImpactLines] = useState<MapLine[]>([]);
+  const [impactFocus, setImpactFocus] = useState<[number, number] | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'incidents' | 'duplicates' | 'impact'>('incidents');
@@ -23,14 +32,10 @@ export default function Admin() {
     setLoading(true);
     setError(null);
     try {
-      const [incs, dups, ov] = await Promise.all([
-        apiClient.getIncidents(),
-        apiClient.getDuplicateCandidates(),
-        apiClient.getAdminOverview(),
-      ]);
+      const [incs, ov] = await Promise.all([apiClient.getIncidents(), apiClient.getAdminOverview()]);
       setIncidents(incs);
-      setDuplicates(dups);
       setOverview(ov);
+      setDuplicates(await apiClient.getDuplicateCandidates(incs).catch(() => []));
     } catch (err: any) {
       setError(err.message || 'Failed to load admin data');
       add?.('error', 'Admin load failed', 'Could not load admin dashboard');
@@ -43,6 +48,37 @@ export default function Admin() {
     fetchAdmin();
   }, [fetchAdmin]);
 
+  useLiveIncidents((e) => {
+    if (e.type === 'incident:new') add?.('info', 'New incident reported', e.incident ? `${e.incident.category} · #${e.incident.id}` : undefined);
+    fetchAdmin();
+  });
+
+  const stepClock = async (action: 'next' | 'prev') => {
+    setBusy(true);
+    try {
+      const r = await apiClient.stepSimClock(action);
+      setOverview((o) => (o ? { ...o, sim_time_utc: r.sim_time_utc } : o));
+      add?.('info', 'Simulation clock moved', `Now ${istTime(r.sim_time_utc)} IST. Traffic, predictions and routes follow it.`);
+    } catch (err: any) {
+      add?.('error', 'Clock change failed', err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMerge = async (pair: DuplicatePair) => {
+    const [a, b] = pair.incidents;
+    // Merge the newer report into the older one.
+    const [keep, drop] = new Date(a.created_at) <= new Date(b.created_at) ? [a, b] : [b, a];
+    try {
+      await apiClient.mergeIncident(drop.id, keep.id);
+      add?.('success', 'Reports merged', `#${drop.id} merged into #${keep.id}`);
+      await fetchAdmin();
+    } catch (err: any) {
+      add?.('error', 'Merge failed', err.message);
+    }
+  };
+
   const handleAction = async (id: number | string, status: string) => {
     try {
       await apiClient.updateIncidentStatus(id, status);
@@ -50,18 +86,36 @@ export default function Admin() {
       add?.('success', `Incident ${status}`, `Report #${id} marked as ${status}`);
       await fetchAdmin();
     } catch (err: any) {
-      setError(err.message || `Failed to ${status} incident`);
+      add?.('error', `Could not mark #${id} as ${status}`, err.message);
     }
   };
 
   const handleImpact = async (inc: Incident) => {
     try {
-      const res = await apiClient.getNetworkImpact(inc.lat, inc.lng);
+      const [res, g] = await Promise.all([apiClient.getNetworkImpact(inc.id, inc.is_closure ? 'closure' : undefined), loadGraph()]);
+      const lines: MapLine[] = [];
+      for (const a of res.affected_segments) {
+        const e = g.edgesById.get(a.segment_id);
+        if (!e) continue;
+        const closed = a.congestion_level_after === 'closed';
+        lines.push({
+          coords: e.coords,
+          color: closed ? '#1F1D1B' : congestionColor(LEVEL_AFTER[a.congestion_level_after] ?? -1),
+          weight: a.hops === 0 ? 8 : 6,
+          dash: closed ? '4, 6' : undefined,
+          title: `${e.name ?? a.segment_id}: ${a.congestion_level_after}${a.extra_delay_s != null ? ` · +${Math.round(a.extra_delay_s)}s` : ''}`,
+        });
+      }
+      if (res.diversion_route) {
+        lines.push({ coords: res.diversion_route.coords, color: '#4A6A8A', weight: 5, dash: '10, 8', title: `Diversion · ${res.diversion_route.eta_min} min` });
+      }
       setImpact(res);
+      setImpactLines(lines);
+      setImpactFocus([inc.lat, inc.lng]);
       setActiveTab('impact');
-      add?.('success', 'Network impact', `Showing ${res.count} affected segments`);
+      add?.('success', 'Network impact', `${res.count} segments affected · +${res.total_extra_delay_min} min total delay`);
     } catch (err: any) {
-      setError(err.message || 'Impact analysis failed');
+      add?.('error', 'Impact analysis failed', err.message);
     }
   };
 
@@ -75,85 +129,115 @@ export default function Admin() {
   const pending = incidents.filter((i) => i.status === 'pending');
 
   return (
-    <div className="flex h-full w-full">
-      {/* Left: overview + incident list */}
-      <aside className="w-80 bg-slate-900/95 backdrop-blur border-r border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-blue-400" /> Admin Dashboard
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">Incident review &amp; verification</p>
-        </div>
+    <MapStage
+      map={
+        <MapView
+          edges={[]}
+          incidents={incidents}
+          routes={[]}
+          lines={activeTab === 'impact' ? impactLines : undefined}
+          center={activeTab === 'impact' ? impactFocus : undefined}
+          zoom={activeTab === 'impact' ? 16 : 15}
+        />
+      }
+      panel={
+        <>
+          <PageHeading
+            eyebrow="Review — Verify — Resolve"
+            title="Control"
+            accent="Room"
+            description="Triage citizen reports, merge duplicates and inspect network impact."
+          />
 
-        <div className="p-4 space-y-4 overflow-y-auto">
           {overview && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <StatCard title="Total incidents" value={overview.incidents?.total ?? incidents.length} />
-              <StatCard title="Pending" value={overview.incidents?.pending ?? pending.length} trend={{ label: 'needs review', value: overview.incidents?.pending ?? pending.length, positive: false }} />
+              <StatCard
+                title="Needs review"
+                value={overview.incidents?.pending ?? pending.length}
+                className="bg-traffic-yellow/10"
+              />
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Incident reports</label>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setActiveTab('incidents')}
-                className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                  activeTab === 'incidents'
-                    ? 'bg-blue-600/20 text-blue-300 border-blue-500/30'
-                    : 'bg-slate-800 text-slate-400 border-slate-600 hover:text-white'
-                }`}
-              >
-                All ({incidents.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('duplicates')}
-                className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                  activeTab === 'duplicates'
-                    ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
-                    : 'bg-slate-800 text-slate-400 border-slate-600 hover:text-white'
-                }`}
-              >
-                Duplicates ({duplicates.length})
-              </button>
+          {overview && (
+            <div className="flex items-center justify-between gap-2 rounded-3xl border border-white/80 bg-white/55 px-4 py-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
+                  <Clock className="h-3 w-3" /> Simulation clock
+                </p>
+                <p className="font-display text-xl font-light text-ink">{istTime(overview.sim_time_utc)} IST</p>
+                <p className="text-[10px] text-ink-faint">
+                  ML service: {overview.ml_service?.status === 'up' ? `up (${overview.ml_service.model_version})` : 'down, baseline in use'}
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                <button disabled={busy} onClick={() => stepClock('prev')} className="icon-btn h-9 w-9 disabled:opacity-40" aria-label="Back 15 minutes" title="Back 15 minutes">
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button disabled={busy} onClick={() => stepClock('next')} className="icon-btn h-9 w-9 disabled:opacity-40" aria-label="Forward 15 minutes" title="Forward 15 minutes">
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+          )}
+
+          <div className="segmented">
+            <button type="button" data-active={activeTab === 'incidents'} onClick={() => setActiveTab('incidents')}>
+              All ({incidents.length})
+            </button>
+            <button type="button" data-active={activeTab === 'duplicates'} onClick={() => setActiveTab('duplicates')}>
+              Duplicates ({duplicates.length})
+            </button>
           </div>
 
           {activeTab === 'impact' && impact && (
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 mb-4">
-              <h4 className="text-xs font-semibold text-slate-300 mb-2">Network impact</h4>
-              <p className="text-sm text-slate-200">{impact.count} affected segments</p>
-              <p className="text-[10px] text-slate-500 mt-1">Simulated closure label applied.</p>
-              <Button variant="ghost" size="sm" onClick={() => setActiveTab('incidents')} className="w-full mt-2">
+            <div className="glass-dark space-y-2 rounded-3xl p-5 animate-slide-up">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-sand-300">Network impact</p>
+              <p className="font-display text-5xl font-light text-bronze-light">{impact.count}</p>
+              <p className="text-sm text-sand-200">affected segments · +{impact.total_extra_delay_min} min total delay</p>
+              {impact.diversion_route && (
+                <p className="text-[11px] text-sand-300">
+                  Diversion (blue dashes): {impact.diversion_route.distance_km} km, {impact.diversion_route.eta_min} min
+                  {impact.detour_minutes != null ? ` · ${impact.detour_minutes} min detour` : ''}
+                </p>
+              )}
+              <p className="text-[11px] text-sand-300">Simulated. Shown on the map around the incident.</p>
+              <button
+                onClick={() => setActiveTab('incidents')}
+                className="mt-2 w-full rounded-full bg-sand-50 px-4 py-2 text-xs font-semibold text-ink hover:bg-white"
+              >
                 Back to incidents
-              </Button>
+              </button>
             </div>
           )}
 
           {activeTab === 'duplicates' && (
             <div className="space-y-3">
               {duplicates.length === 0 ? (
-                <p className="text-[10px] text-slate-500">No duplicate candidates detected.</p>
+                <p className="px-1 text-sm text-ink-muted">No duplicate candidates detected.</p>
               ) : (
                 duplicates.map((d) => (
-                  <div key={d.id} className="bg-slate-800 border border-slate-700 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs font-medium text-slate-300">Candidate #{d.id}</span>
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                        d.score > 0.8 ? 'bg-red-900/20 text-red-400 border-red-500/30' : 'bg-yellow-900/20 text-yellow-400 border-yellow-500/30'
-                      }`}>
-                        {Math.round(d.score * 100)}% match
-                      </span>
+                  <div key={d.id} className="rounded-3xl border border-white/80 bg-white/55 p-4">
+                    <div className="mb-3 flex items-start justify-between">
+                      <span className="text-xs font-semibold text-ink">#{d.incidents[0].id} ↔ #{d.incidents[1].id}</span>
+                      <Badge variant={d.score > 0.8 ? 'error' : 'warning'}>{Math.round(d.score * 100)}% match</Badge>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       {d.incidents.map((inc) => (
-                        <div key={inc.id} className="flex-1 border-r border-slate-700 pr-2 last:border-0">
-                          <div className="text-[10px] text-slate-500">#{inc.id}</div>
-                          <div className="text-xs text-slate-200 truncate">{inc.description}</div>
-                          <div className="text-[10px] text-slate-500">{inc.status}</div>
+                        <div key={inc.id} className="min-w-0 flex-1 border-r border-ink/10 pr-3 last:border-0 last:pr-0">
+                          <div className="text-[10px] text-ink-faint">#{inc.id}</div>
+                          <div className="truncate text-xs text-ink">{inc.description}</div>
+                          <div className="text-[10px] capitalize text-ink-muted">{inc.type} · {inc.status}</div>
                         </div>
                       ))}
                     </div>
+                    <button
+                      onClick={() => handleMerge(d)}
+                      className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-[11px] font-semibold text-sand-50 hover:bg-ink-soft"
+                    >
+                      <GitMerge className="h-3.5 w-3.5" /> Merge newer into older
+                    </button>
                   </div>
                 ))
               )}
@@ -161,101 +245,96 @@ export default function Admin() {
           )}
 
           {activeTab === 'incidents' && (
-            <div className="space-y-2 max-h-[400] overflow-y-auto">
+            <div className="space-y-2">
               {incidents.length === 0 ? (
-                <p className="text-[10px] text-slate-500">No incidents reported.</p>
+                <p className="px-1 text-sm text-ink-muted">No incidents reported.</p>
               ) : (
                 incidents.map((inc) => (
-                  <div key={inc.id} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800 border border-slate-700">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-slate-200 truncate">{inc.type}</div>
-                      <div className="text-[10px] text-slate-500 truncate">{inc.description}</div>
-                      <div className="text-[10px] text-slate-500">
-                        {inc.reporter} · {isoToLocalTime(inc.created_at)}
+                  <div key={inc.id} className="rounded-3xl border border-white/80 bg-white/55 p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold capitalize text-ink">{inc.type}</div>
+                        <div className="truncate text-xs text-ink-muted">{inc.description}</div>
+                        <div className="mt-0.5 text-[10px] text-ink-faint">
+                          {inc.reporter} · {isoToLocalTime(inc.created_at)}
+                        </div>
                       </div>
+                      <StatusPill status={inc.status} />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${
-                        inc.status === 'verified' ? 'bg-green-900/20 text-green-400 border-green-500/30' :
-                        inc.status === 'pending' ? 'bg-yellow-900/20 text-yellow-400 border-yellow-500/30' :
-                        inc.status === 'resolved' ? 'bg-slate-900/20 text-slate-400 border-slate-600' :
-                        'bg-red-900/20 text-red-400 border-red-500/30'
-                      }`}>
-                        {inc.status}
-                      </span>
-                      {inc.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleAction(inc.id, 'verified')}
-                            className="p-1 text-green-400 hover:bg-green-500/10 rounded"
-                            title="Verify"
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleAction(inc.id, 'rejected')}
-                            className="p-1 text-red-400 hover:bg-red-500/10 rounded"
-                            title="Reject"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleAction(inc.id, 'resolved')}
-                            className="p-1 text-slate-400 hover:bg-slate-600/50 rounded"
-                            title="Resolve"
-                          >
-                            <MinusCircle className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {inc.status === 'verified' && (
+                      <div className="mt-3 flex gap-1.5">
+                        <button
+                          onClick={() => handleAction(inc.id, 'resolved')}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-full border border-ink/15 px-2 py-1.5 text-[11px] font-semibold text-ink-muted hover:bg-white"
+                        >
+                          <MinusCircle className="h-3.5 w-3.5" /> Mark resolved
+                        </button>
+                        <button
+                          onClick={() => handleImpact(inc)}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-full border border-ink/15 px-2 py-1.5 text-[11px] font-semibold text-ink-muted hover:bg-white"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" /> Impact
+                        </button>
+                      </div>
+                    )}
+                    {inc.status === 'pending' && (
+                      <div className="mt-3 flex gap-1.5">
+                        <button
+                          onClick={() => handleAction(inc.id, 'verified')}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-full bg-ink px-2 py-1.5 text-[11px] font-semibold text-sand-50 hover:bg-ink-soft"
+                          title="Verify"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Verify
+                        </button>
+                        <button
+                          onClick={() => handleAction(inc.id, 'rejected')}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-full border border-traffic-red/30 px-2 py-1.5 text-[11px] font-semibold text-traffic-red hover:bg-traffic-red/10"
+                          title="Reject"
+                        >
+                          <XCircle className="h-3.5 w-3.5" /> Reject
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
             </div>
           )}
-        </div>
-      </aside>
-
-      <div className="flex-1 relative min-w-0 flex flex-col">
-        <MapView
-          edges={[]}
-          incidents={activeTab === 'impact' ? [] : incidents}
-          routes={[]}
-        />
-
-        <div className="h-1/3 border-t border-slate-800 p-4 overflow-y-auto">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-red-400" /> Incidents on map
-            </h3>
-            <span className="text-xs text-slate-500">{incidents.length} reports</span>
+        </>
+      }
+      bottom={
+        <div className="glass rounded-3xl px-5 py-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="eyebrow flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5 text-bronze" /> Incidents on map
+            </p>
+            <span className="text-[11px] text-ink-faint">
+              {incidents.length > 8 ? `Showing 8 of ${incidents.length} · ` : ''}Click for network impact
+            </span>
           </div>
-          <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {incidents.slice(0, 8).map((inc) => (
-              <div key={inc.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:bg-slate-700 transition-colors"
-                onClick={() => handleImpact(inc)}>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: statusColor(inc.status) }} />
-                  <div className="text-sm text-slate-200 truncate w-32">{inc.type}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-medium" style={{ color: statusColor(inc.status) }}>
-                    {inc.status}
+              <button
+                type="button"
+                key={inc.id}
+                className="group flex min-w-[180px] items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/60 px-3.5 py-2.5 text-left transition-colors hover:bg-white"
+                onClick={() => handleImpact(inc)}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-white" style={{ backgroundColor: statusColor(inc.status) }} />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold capitalize text-ink">{inc.type}</div>
+                    <div className="text-[10px] text-ink-faint">
+                      <span className="capitalize" style={{ color: statusColor(inc.status) }}>{inc.status}</span> · {isoToLocalTime(inc.created_at)}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-slate-500">{isoToLocalTime(inc.created_at)}</div>
                 </div>
-                <AlertTriangle className="h-4 w-4 text-slate-500 opacity-50" />
-              </div>
+                <AlertTriangle className="h-4 w-4 shrink-0 text-ink-faint transition-colors group-hover:text-bronze" />
+              </button>
             ))}
-            {incidents.length > 8 && (
-              <div className="p-2 text-center text-[10px] text-slate-500">
-                Showing 8 of {incidents.length}. Click a row to view network impact.
-              </div>
-            )}
           </div>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 }

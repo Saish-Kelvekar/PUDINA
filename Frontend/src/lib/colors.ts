@@ -1,11 +1,11 @@
 export const CONGESTION_COLORS: Record<string, string> = {
-  green: '#16a34a',
-  yellow: '#eab308',
-  orange: '#f97316',
-  red: '#dc2626',
-  grey: '#94a3b8',
-  blue: '#2563eb',
-  purple: '#7c3aed',
+  green: '#5E8C61',
+  yellow: '#D4A93C',
+  orange: '#D07B3A',
+  red: '#B8453A',
+  grey: '#A39B92',
+  blue: '#4A6A8A',
+  purple: '#7E6A9A',
 };
 
 export function congestionColor(level: number | string): string {
@@ -29,15 +29,16 @@ export function congestionLabel(level: number): string {
 
 export function statusColor(status: string): string {
   switch (status?.toLowerCase()) {
-    case 'verified': return '#16a34a';
-    case 'pending': return '#eab308';
-    case 'resolved': return '#64748b';
-    case 'rejected': return '#dc2626';
-    default: return '#94a3b8';
+    case 'verified': return '#5E8C61';
+    case 'pending': return '#D4A93C';
+    case 'resolved': return '#8A8178';
+    case 'rejected': return '#B8453A';
+    default: return '#A39B92';
   }
 }
 
 export function formatMinutes(n: number): string {
+  if (n < 10) return `${Math.round(n * 10) / 10} min`;
   if (n < 60) return `${Math.round(n)} min`;
   const h = Math.floor(n / 60);
   const m = Math.round(n % 60);
@@ -45,7 +46,7 @@ export function formatMinutes(n: number): string {
 }
 
 export function formatETA(n: number): string {
-  return `${Math.round(n)} min`;
+  return n < 10 ? `${Math.round(n * 10) / 10} min` : `${Math.round(n)} min`;
 }
 
 export function isoToLocalTime(iso: string): string {

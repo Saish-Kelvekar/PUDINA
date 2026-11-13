@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, X } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -17,17 +17,17 @@ interface ToastContextValue {
 }
 
 const ICONS: Record<ToastType, ReactNode> = {
-  success: <CheckCircle className="h-5 w-5 text-green-400" />,
-  error: <AlertCircle className="h-5 w-5 text-red-400" />,
-  info: <Info className="h-5 w-5 text-blue-400" />,
-  warning: <AlertCircle className="h-5 w-5 text-yellow-400" />,
+  success: <CheckCircle className="h-4 w-4 text-traffic-green" />,
+  error: <AlertCircle className="h-4 w-4 text-traffic-red" />,
+  info: <Info className="h-4 w-4 text-traffic-blue" />,
+  warning: <AlertCircle className="h-4 w-4 text-traffic-orange" />,
 };
 
-const COLORS: Record<ToastType, string> = {
-  success: 'bg-green-900/20 border-green-500/30 text-green-300',
-  error: 'bg-red-900/20 border-red-500/30 text-red-300',
-  info: 'bg-blue-900/20 border-blue-500/30 text-blue-300',
-  warning: 'bg-yellow-900/20 border-yellow-500/30 text-yellow-300',
+const RINGS: Record<ToastType, string> = {
+  success: 'bg-traffic-green/10',
+  error: 'bg-traffic-red/10',
+  info: 'bg-traffic-blue/10',
+  warning: 'bg-traffic-orange/10',
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -52,27 +52,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="pointer-events-none fixed right-4 top-4 z-[2000] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-lg border shadow-panel min-w-[320px] transition-opacity ${COLORS[t.type]}`}
+            role="status"
+            className="glass-strong pointer-events-auto flex items-start gap-3 rounded-3xl px-4 py-3 animate-slide-up"
             onClick={() => remove(t.id)}
           >
-            <div className="mt-0.5 shrink-0">{ICONS[t.type]}</div>
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold">{t.title}</h4>
-              {t.message && <p className="text-xs text-opacity-80 mt-0.5">{t.message}</p>}
+            <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${RINGS[t.type]}`}>
+              {ICONS[t.type]}
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <h4 className="text-sm font-semibold text-ink">{t.title}</h4>
+              {t.message && <p className="mt-0.5 text-xs text-ink-muted">{t.message}</p>}
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); remove(t.id); }}
-              className="ml-2 p-1 text-slate-500 hover:text-white"
+              className="rounded-full p-1.5 text-ink-faint hover:bg-white hover:text-ink"
               aria-label="Dismiss"
             >
-              <span className="sr-only">Dismiss</span>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
