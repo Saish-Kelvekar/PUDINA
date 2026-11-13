@@ -198,13 +198,20 @@ Admin only. In closure mode the incident road shows `speed_after_kmph: 0`, `extr
 
 ### 2.9 Predictions
 
-`GET /predictions?horizon=15` (or `30`). Optional `segment_ids=e1,e7`.
-Returns `{ horizon_min, model_version, made_at_utc, generated_at, predictions: [ { segment_id, current_speed_kmph, predicted_speed_kmph, predicted_level, confidence, target_time_utc, source: "AI_PREDICTED" } ] }`.
-**Until M3's service is up**, `model_version` is `"baseline"` (speed later = speed now) and `confidence` is `null`. The 📄 `predictions_15.json` / `predictions_30.json` mocks are this baseline, so M1 should show "Baseline model" when it sees that. 📄 `predictions_model_example.json` shows the shape once M3's model is connected (M3's example, 2 segments).
+`GET /predictions?horizon=15` (or `30`). Optional `segment_ids=e41,e51`.
+Returns `{ horizon_min, model_version, sim_time_utc, made_at_utc, generated_at, fallback_reason, predictions: [ { segment_id, current_speed_kmph, predicted_speed_kmph, predicted_level, confidence, target_time_utc, source: "AI_PREDICTED" } ] }`. With `segment_ids`, also `no_data_segment_ids`: roads you asked for that have no traffic data (so no prediction).
 
-`GET /predictions/metrics` (optional `?segment_id=e7&horizon=15` for the chart).
-Returns `{ model_version, trained_on, tested_on, split, source, horizons: { "15": { mae_model_kmph, mae_baseline_kmph, improvement_pct, level_accuracy_model, level_accuracy_baseline, test_rows }, "30": {...} }, series: { segment_id, horizon_min, points: [ { timestamp_utc, actual_kmph, predicted_kmph, baseline_kmph } ] } }`.
-⚠️ The mock is M3's `ml-service/examples/metrics.json` passed through: the numbers are **placeholders**, never show them in the demo. The real ones come from M3's test week. The UI must also handle `null` values (show "—").
+- Predictions exist only for roads **with traffic data** (188 roads in M3's real dataset). Draw the purple layer for those only.
+- `made_at_utc` is the traffic time step used (the newest step not after the simulation time).
+- **When M3's model answers**, `model_version` is e.g. `"rf-v1"` and `fallback_reason` is `null`.
+- **When it is stopped, slow (over 3 s) or refuses**, the backend returns the honest baseline (speed later = speed now): `model_version: "baseline"`, `confidence: null`, and `fallback_reason` says why. M1 should show "Baseline model" then. The map never breaks because of the ML service.
+- Model answers are reused for 60 s per time step; baseline answers are not, so the model is used again as soon as it is back. Every answer is saved in `traffic_predictions`.
+
+`GET /predictions/metrics` (optional `?segment_id=e41&horizon=15` together, for the chart).
+Returns M3's metrics plus `available: true`: `{ model_version, trained_on, tested_on, split, horizons: { "15": { mae_model_kmph, mae_baseline_kmph, improvement_pct, level_accuracy_model, level_accuracy_baseline, test_rows }, "30": {...} }, series: { segment_id, horizon_min, points: [ { timestamp_utc, actual_kmph, predicted_kmph, baseline_kmph } ] } | null, available, source }`.
+If the ML service is down: `{ model_version: "baseline", available: false, fallback_reason, horizons: { "15": null, "30": null }, series: null }`. Show "—" for the numbers then.
+
+`GET /health` ⭐ also reports `ml_service: { status: "up", model_version }` or `{ status: "down", reason }`.
 
 ### 2.10 Signals
 

@@ -19,4 +19,10 @@ module.exports = {
 
   // A clicked source/destination must be this close to a junction, or we ask the user to click on the map's roads
   MAX_SNAP_DISTANCE_M: 300,
+
+  // How long we wait for M3's ML service before using the fallback (contract: 3 s)
+  ML_TIMEOUT_MS: 3000,
+
+  // Predictions for the same time step are reused for this long (the map asks often)
+  PREDICTION_CACHE_MS: 60000,
 };
