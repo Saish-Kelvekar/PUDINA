@@ -1,0 +1,34 @@
+{
+  "model_version": "hgb-v1",
+  "trained_on": "2026-10-05 to 2026-11-08",
+  "tested_on": "2026-11-09 to 2026-11-15",
+  "split": "time-based",
+  "horizons": {
+    "15": {
+      "mae_model_kmph": 2.1,
+      "mae_baseline_kmph": 3.4,
+      "improvement_pct": 38.2,
+      "level_accuracy_model": 0.81,
+      "level_accuracy_baseline": 0.72,
+      "test_rows": 120960
+    },
+    "30": {
+      "mae_model_kmph": 2.9,
+      "mae_baseline_kmph": 4.6,
+      "improvement_pct": 37.0,
+      "level_accuracy_model": 0.76,
+      "level_accuracy_baseline": 0.65,
+      "test_rows": 120960
+    }
+  },
+  "series": {
+    "segment_id": "e7",
+    "horizon_min": 15,
+    "points": [
+      { "timestamp_utc": "2026-11-10T03:00:00Z", "actual_kmph": 19.0, "predicted_kmph": 18.4, "baseline_kmph": 22.0 },
+      { "timestamp_utc": "2026-11-10T03:15:00Z", "actual_kmph": 15.0, "predicted_kmph": 14.2, "baseline_kmph": 19.0 },
+      { "timestamp_utc": "2026-11-10T03:30:00Z", "actual_kmph": 8.0, "predicted_kmph": 9.6, "baseline_kmph": 15.0 },
+      { "timestamp_utc": "2026-11-10T03:45:00Z", "actual_kmph": 3.0, "predicted_kmph": 5.2, "baseline_kmph": 8.0 }
+    ]
+  }
+}
