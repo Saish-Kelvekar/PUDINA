@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MapPin, X } from 'lucide-react';
-import { getQuickPicks, nearestNode } from '@/api/api';
+import { getQuickPicks, nearestNode, MAX_SNAP_M } from '@/api/api';
 import type { RoutePoint } from '@/types';
 import type { MapPin as Pin } from '@/components/MapView';
 
@@ -22,15 +22,18 @@ export function pickPins(from: PickedPoint | null, to: PickedPoint | null, toCol
   return pins;
 }
 
-/** Turns a map click into the next point: fills From, then To, then starts over. */
-export async function pointFromClick(lat: number, lng: number): Promise<PickedPoint> {
+export const OUTSIDE_MSG = 'Outside the covered area. Pick a point on the highlighted roads.';
+
+/**
+ * Turns a map click into a route point, snapped to the nearest junction (which is exactly what
+ * the backend routes from). Returns null when no junction is within MAX_SNAP_M: there are no
+ * roads or traffic data there, so the backend would reject it anyway.
+ */
+export async function pointFromClick(lat: number, lng: number): Promise<PickedPoint | null> {
   const near = await nearestNode(lat, lng).catch(() => null);
-  const label = near
-    ? near.distance_m > 300
-      ? `Off-road point (${near.distance_m} m from a road)`
-      : `Near ${near.node.label}`
-    : `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-  return { lat, lng, label };
+  if (!near || near.distance_m > MAX_SNAP_M) return null;
+  const n = near.node;
+  return { lat: n.lat, lng: n.lng, label: n.label, node_id: n.id };
 }
 
 export function nextPicks(

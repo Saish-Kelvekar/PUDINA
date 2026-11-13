@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/api/api';
-import type { EdgeCongestion, EmergencyResult, EmergencyVehicle } from '@/types';
+import type { EdgeCongestion, EmergencyResult, EmergencyVehicle, RouteResult } from '@/types';
 import { formatMinutes } from '@/lib/colors';
 import { Ambulance, Play, Truck, ShieldAlert, Clock, Info, TrafficCone } from 'lucide-react';
 import { MapStage, MapChip } from '@/components/layout/MapStage';
@@ -13,10 +13,13 @@ import {
   type PickedPoint,
   pickPins,
   pointFromClick,
+  OUTSIDE_MSG,
   nextPicks,
   toRoutePoint,
 } from '@/components/RoutePointPicker';
 import { cn } from '@/lib/utils';
+
+const NO_ROUTES: RouteResult[] = [];
 
 const VEHICLES: { value: EmergencyVehicle; label: string; icon: React.ReactNode }[] = [
   { value: 'ambulance', label: 'Ambulance', icon: <Ambulance className="h-4 w-4" /> },
@@ -45,11 +48,22 @@ export default function EmergencyRouting() {
     setError(null);
   };
 
-  const handleMapClick = async (lat: number, lng: number) => {
+  const handleMapClick = useCallback(async (lat: number, lng: number) => {
     const p = await pointFromClick(lat, lng);
+    if (!p) {
+      add?.('warning', OUTSIDE_MSG);
+      return;
+    }
     const [a, b] = nextPicks(from, to, p);
     setPoints(a, b);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, add]);
+
+  const mapRoutes = useMemo(
+    () => (result ? [result.normal, { ...result.emergency, recommended: true }] : NO_ROUTES),
+    [result],
+  );
+  const pins = useMemo(() => pickPins(from, to, '#B8453A'), [from, to]);
 
   const fetchRoutes = useCallback(async () => {
     if (!from || !to) {
@@ -77,9 +91,9 @@ export default function EmergencyRouting() {
         <MapView
           edges={edges}
           incidents={[]}
-          routes={result ? [result.normal, { ...result.emergency, recommended: true }] : []}
+          routes={mapRoutes}
           onMapClick={handleMapClick}
-          pins={pickPins(from, to, '#B8453A')}
+          pins={pins}
         />
       }
       overlay={

@@ -4,7 +4,8 @@ import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { apiClient, DEFAULT_CENTER } from '@/api/api';
+import { apiClient, DEFAULT_CENTER, nearestNode, MAX_SNAP_M } from '@/api/api';
+import { OUTSIDE_MSG } from '@/components/RoutePointPicker';
 import { useLiveIncidents } from '@/lib/realtime';
 import type { EdgeCongestion, Incident } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
@@ -23,6 +24,8 @@ const INCIDENT_TYPES: { value: string; label: string }[] = [
   { value: 'event', label: 'Event / crowd' },
   { value: 'other', label: 'Other' },
 ];
+
+const NO_ROUTES: never[] = [];
 
 const SEVERITIES: { value: string; label: string }[] = [
   { value: 'low', label: 'Low' },
@@ -62,6 +65,18 @@ export default function ReportIncident() {
   useEffect(() => {
     fetchMap();
   }, [fetchMap]);
+
+  // Only accept points inside the road network; the exact click is kept (incidents sit on roads,
+  // and the backend still checks the point is within 200 m of one).
+  const handleMapClick = useCallback(async (lat: number, lng: number) => {
+    const near = await nearestNode(lat, lng).catch(() => null);
+    if (!near || near.distance_m > MAX_SNAP_M) {
+      add?.('warning', OUTSIDE_MSG);
+      return;
+    }
+    setSelected({ lat, lng });
+    setSubmitError(null);
+  }, [add]);
 
   useLiveIncidents(() => {
     apiClient.getIncidents().then(setIncidents).catch(() => {});
@@ -112,10 +127,10 @@ export default function ReportIncident() {
         <MapView
           edges={edges}
           incidents={incidents}
-          routes={[]}
+          routes={NO_ROUTES}
           center={selected ? [selected.lat, selected.lng] : DEFAULT_CENTER}
           zoom={selected ? 16 : 15}
-          onMapClick={(lat, lng) => setSelected({ lat, lng })}
+          onMapClick={handleMapClick}
         />
       }
       overlay={

@@ -20,7 +20,7 @@ interface MapStageProps {
  */
 export function MapStage({ map, panel, bottom, overlay, bottomClassName }: MapStageProps) {
   return (
-    <div className="relative h-full w-full overflow-y-auto lg:overflow-hidden">
+    <div className="map-stage relative h-full w-full overflow-y-auto lg:overflow-hidden">
       {/* Map layer */}
       <div className="relative h-[52vh] min-h-[320px] lg:absolute lg:inset-0 lg:h-auto">
         {map}

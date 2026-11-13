@@ -119,8 +119,18 @@ export interface GraphIndex {
   nodesById: Map<string, GraphNode>;
   edgesById: Map<string, GraphEdge>;
   center: [number, number];
+  /** Exact extent of the road network. */
   bounds: [[number, number], [number, number]];
+  /** Network extent plus ~3 km — the map is not allowed to pan beyond this. */
+  paddedBounds: [[number, number], [number, number]];
 }
+
+/** The backend snaps a clicked point to the nearest junction only within this distance. */
+export const MAX_SNAP_M = 300;
+// Generous on purpose: Leaflet's bounds-clamping misbehaves (and desyncs the vector canvas during
+// fly-to animations) when the visible map is about as large as maxBounds. Clicks outside the road
+// network are still refused by the 300 m snap rule, and the covered area is outlined on the map.
+const PAD_M = 3000;
 
 let graphPromise: Promise<GraphIndex> | null = null;
 
@@ -154,6 +164,12 @@ function buildGraphIndex(raw: { nodes: any[]; edges: any[] }): GraphIndex {
     edgesById: new Map(edges.map((e) => [e.id, e])),
     center: nodes.length ? [(minLat + maxLat) / 2, (minLng + maxLng) / 2] : DEFAULT_CENTER,
     bounds: [[minLat, minLng], [maxLat, maxLng]],
+    paddedBounds: (() => {
+      const midLat = (minLat + maxLat) / 2;
+      const dLat = PAD_M / 110540;
+      const dLng = PAD_M / (111320 * Math.cos((midLat * Math.PI) / 180));
+      return [[minLat - dLat, minLng - dLng], [maxLat + dLat, maxLng + dLng]] as [[number, number], [number, number]];
+    })(),
   };
 }
 
