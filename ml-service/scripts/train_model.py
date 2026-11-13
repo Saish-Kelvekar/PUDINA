@@ -22,72 +22,25 @@ import sys
 from sklearn.ensemble import RandomForestRegressor
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.graph_utils import approaches_into, load_graph, signalised_node_ids
+from app.features import FEATURES, add_features, level
+from app.graph_utils import load_graph
 
 ROOT = Path(__file__).resolve().parents[2]
 CSV = ROOT / "data" / "traffic.csv"
-GRAPH = ROOT / "data" / "graph.json"
 MODEL_DIR = ROOT / "ml-service" / "models"
 METRICS = ROOT / "ml-service" / "metrics.json"
 
 TRAIN_END = pd.Timestamp("2026-11-09T00:00:00Z")
-FEATURES = ["hour_ist", "dow", "weekend", "speed_now", "speed_lag15",
-            "speed_lag30", "free_flow_kmph", "lanes", "rain", "incident",
-            "neighbour_speed_now"]
-
-
-def level(ratio: pd.Series) -> pd.Series:
-    return np.select(
-        [ratio > 0.75, ratio >= 0.50, ratio >= 0.25],
-        ["flowing", "moderate", "heavy"],
-        default="severe",
-    )
 
 
 def main() -> None:
-    df = pd.read_csv(CSV, parse_dates=["timestamp_utc"])
-    df = df.sort_values(["segment_id", "timestamp_utc"]).reset_index(drop=True)
-
     graph = load_graph()
-    edges = {e["id"]: e for e in graph["edges"]}
-    primary = [e for e in graph["edges"] if e["road_type"] == "primary"]
-    approach_ids = {ap["edge_id"] for node in signalised_node_ids(graph)
-                    for ap in approaches_into(graph, node)}
-    covered = [e for e in primary] + [e for e in graph["edges"]
-                                      if e["id"] in approach_ids and e["road_type"] != "primary"]
-    lanes = {e["id"]: e["lanes"] for e in covered}
-
-    # neighbour map: covered edges sharing a node
-    neighbours = {e["id"]: {o["id"] for o in covered
-                            if o["id"] != e["id"]
-                            and ({e["from"], e["to"]} & {o["from"], o["to"]})}
-                  for e in covered}
-    print(f"covered segments: {len(covered)}, avg neighbours {np.mean([len(v) for v in neighbours.values()]):.2f}")
-
-    # neighbour speed per step (all primary edges are covered)
-    pivot = df.pivot(index="timestamp_utc", columns="segment_id", values="speed_kmph")
-    neigh_map = {}
-    for seg_id in pivot.columns:
-        neigh_cols = list(neighbours.get(seg_id, set()))
-        neigh_map[seg_id] = (pivot[neigh_cols].mean(axis=1)
-                             if neigh_cols
-                             else pd.Series(0.0, index=pivot.index))
-    df["neighbour_speed_now"] = 0.0
-    for seg_id, series in neigh_map.items():
-        mask = df["segment_id"] == seg_id
-        df.loc[mask, "neighbour_speed_now"] = series.reindex(df.loc[mask, "timestamp_utc"]).values
-
-    df["lanes"] = df["segment_id"].map(lanes)
-    df["hour_ist"] = ((df["timestamp_utc"].dt.hour + df["timestamp_utc"].dt.minute / 60 + 5.5) % 24).round(2)
-    df["dow"] = df["timestamp_utc"].dt.day_of_week
-    df["weekend"] = (df["dow"] >= 5).astype(int)
+    df = pd.read_csv(CSV, parse_dates=["timestamp_utc"])
+    df = add_features(df, graph)
 
     grp = df.groupby("segment_id")
-    df["speed_lag15"] = grp["speed_kmph"].shift(1)
-    df["speed_lag30"] = grp["speed_kmph"].shift(2)
     df["speed_t15"] = grp["speed_kmph"].shift(-1)
     df["speed_t30"] = grp["speed_kmph"].shift(-2)
-    df["speed_now"] = df["speed_kmph"]
 
     df = df.dropna(subset=["speed_lag15", "speed_lag30", "speed_t15", "speed_t30"]).reset_index(drop=True)
     print(f"training rows after lag drop: {len(df)}")
