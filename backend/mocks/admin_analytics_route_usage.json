@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "data": {
+    "route_usage": {
+      "searches": 1,
+      "chosen": 1,
+      "followed_recommendation": 0,
+      "followed_pct": 0,
+      "chosen_by_type": [
+        {
+          "type": "fastest",
+          "count": 1
+        }
+      ],
+      "top_trips": [
+        {
+          "source": {
+            "node_id": "n2509",
+            "name": "Junction n2509"
+          },
+          "destination": {
+            "node_id": "n2563",
+            "name": "Junction n2563"
+          },
+          "searches": 1,
+          "chosen": 1
+        }
+      ]
+    }
+  },
+  "error": null,
+  "_note": "Only the new route_usage part of GET /api/admin/analytics; the rest is unchanged (see admin_analytics.json)."
+}

@@ -1,0 +1,52 @@
+{
+  "success": true,
+  "data": {
+    "item": {
+      "id": 2,
+      "created_at": "2026-11-13T19:53:31.722Z",
+      "sim_time_utc": "2026-11-10T03:30:00Z",
+      "source": {
+        "node_id": "n2509",
+        "name": "Junction n2509",
+        "lat": 12.9421664,
+        "lng": 77.5711684
+      },
+      "destination": {
+        "node_id": "n2563",
+        "name": "Junction n2563",
+        "lat": 12.9426484,
+        "lng": 77.5575937
+      },
+      "weights": {
+        "fuel": 0.05,
+        "time": 0.35,
+        "distance": 0.15,
+        "incidents": 0.15,
+        "congestion": 0.2,
+        "reliability": 0.1
+      },
+      "route_count": 5,
+      "recommended": {
+        "route_id": "r3",
+        "type": "least_congested",
+        "label": "Least congested",
+        "rank": 1,
+        "eta_min": 4.6,
+        "distance_km": 2.18,
+        "score": 69.8
+      },
+      "chosen": {
+        "route_id": "r1",
+        "type": "fastest",
+        "label": "Fastest",
+        "rank": 4,
+        "eta_min": 4.5,
+        "distance_km": 1.98,
+        "score": 55,
+        "chosen_at": "2026-11-13T19:53:31.738Z",
+        "followed_recommendation": false
+      }
+    }
+  },
+  "error": null
+}

@@ -21,6 +21,9 @@ import type {
   SignalSimulation,
   SimClock,
   User,
+  HistoryPlace,
+  RouteHistoryItem,
+  RouteHistoryPage,
 } from '@/types';
 import { routeColor } from '@/lib/utils';
 
@@ -97,6 +100,10 @@ async function get<T>(url: string, params?: Record<string, unknown>): Promise<T>
 }
 async function post<T>(url: string, body?: unknown): Promise<T> {
   const res = await api.post(url, body ?? {});
+  return res.data.data as T;
+}
+async function del<T>(url: string): Promise<T> {
+  const res = await api.delete(url);
   return res.data.data as T;
 }
 async function patch<T>(url: string, body?: unknown): Promise<T> {
@@ -276,6 +283,25 @@ function toIncident(g: GraphIndex | null, i: any): Incident {
 
 const latLngList = (coords: Array<[number, number]> = []) => coords.map(([lat, lng]) => ({ lat, lng }));
 
+/** Backend names junctions "Junction n123"; show the friendly street label instead. */
+function historyPlace(g: GraphIndex | null, p: any): HistoryPlace {
+  const node = g?.nodesById.get(p?.node_id);
+  return { node_id: p?.node_id, name: node?.label ?? p?.name ?? p?.node_id, lat: num(p?.lat), lng: num(p?.lng) };
+}
+
+function toHistoryItem(g: GraphIndex | null, i: any): RouteHistoryItem {
+  return {
+    id: i.id,
+    created_at: i.created_at,
+    sim_time_utc: i.sim_time_utc ?? null,
+    source: historyPlace(g, i.source),
+    destination: historyPlace(g, i.destination),
+    route_count: num(i.route_count),
+    recommended: i.recommended ?? null,
+    chosen: i.chosen ?? null,
+  };
+}
+
 function toRoute(r: any): RouteResult {
   return {
     id: r.route_id,
@@ -356,12 +382,52 @@ export const apiClient = {
   async compareRoutes(source: RoutePoint, destination: RoutePoint): Promise<RouteComparison> {
     const d = await post<any>('/routes/compare', { source, destination });
     return {
+      comparison_id: d.comparison_id,
       routes: (d.routes ?? []).map(toRoute),
       recommended_route_id: d.recommended_route_id ?? null,
       source: d.source,
       destination: d.destination,
       sim_time_utc: d.sim_time_utc,
     };
+  },
+
+  // ----- Route search history (the logged-in user's own) --------------------
+  async getRouteHistory(limit = 10, offset = 0): Promise<RouteHistoryPage> {
+    const [g, d] = await Promise.all([loadGraph().catch(() => null), get<any>('/routes/history', { limit, offset })]);
+    return { ...d, items: (d.items ?? []).map((i: any) => toHistoryItem(g, i)) };
+  },
+
+  /** A saved search, in the same shape as compareRoutes(). Routes are as they were at sim_time_utc. */
+  async getSavedSearch(id: number): Promise<RouteComparison> {
+    const [g, d] = await Promise.all([loadGraph().catch(() => null), get<any>(`/routes/history/${id}`)]);
+    return {
+      comparison_id: d.comparison_id,
+      saved: true,
+      created_at: d.created_at,
+      chosen_route_id: d.chosen_route_id ?? null,
+      routes: (d.routes ?? []).map(toRoute),
+      recommended_route_id: d.recommended_route_id ?? null,
+      source: { ...d.source, name: historyPlace(g, d.source).name, snapped_m: 0 },
+      destination: { ...d.destination, name: historyPlace(g, d.destination).name, snapped_m: 0 },
+      sim_time_utc: d.sim_time_utc,
+    };
+  },
+
+  /** routeId = "r2" marks that route as used; null clears the choice. */
+  async chooseRoute(comparisonId: number, routeId: string | null): Promise<RouteHistoryItem> {
+    const [g, d] = await Promise.all([
+      loadGraph().catch(() => null),
+      post<{ item: any }>(`/routes/history/${comparisonId}/choose`, { route_id: routeId }),
+    ]);
+    return toHistoryItem(g, d.item);
+  },
+
+  async deleteSearch(id: number): Promise<{ deleted: number }> {
+    return del(`/routes/history/${id}`);
+  },
+
+  async clearRouteHistory(): Promise<{ deleted: number }> {
+    return del('/routes/history');
   },
 
   // ----- Incidents ---------------------------------------------------------

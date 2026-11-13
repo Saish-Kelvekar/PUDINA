@@ -17,7 +17,8 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Activity, Clock, TrendingUp, AlertTriangle, Hourglass, CheckCircle2, Ambulance } from 'lucide-react';
+import { Activity, Clock, TrendingUp, AlertTriangle, Hourglass, CheckCircle2, Ambulance, Route as RouteIcon } from 'lucide-react';
+import { routeColor } from '@/lib/utils';
 
 const COLORS = ['#1F1D1B', '#9A6B4F', '#C49A7A', '#5E8C61', '#D4A93C', '#7E6A9A', '#4A6A8A'];
 
@@ -26,6 +27,8 @@ export default function Analytics() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [network, setNetwork] = useState<{ nodes: number; edges: number; signals: number } | null>(null);
+  const [labels, setLabels] = useState<Map<string, string>>(new Map());
+  const tripLabel = (id: string, fallback: string) => labels.get(id) ?? fallback;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +44,7 @@ export default function Analytics() {
       setAnalytics(a);
       setOverview(ov);
       if (g) setNetwork({ nodes: g.nodes.length, edges: g.edges.length, signals: g.nodes.filter((n) => n.signalised).length });
+      if (g) setLabels(new Map(g.nodes.map((n) => [n.id, n.label])));
     } catch (err: any) {
       setError(err.message || 'Failed to load analytics');
       add?.('error', 'Analytics load failed', err.message);
@@ -288,6 +292,79 @@ export default function Analytics() {
           </p>
         </section>
       </div>
+
+      {a.route_usage && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <section className="glass-dark rounded-4xl p-6">
+            <p className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-sand-300">
+              <RouteIcon className="h-3.5 w-3.5" /> Route usage
+            </p>
+            <p className="mt-4 font-display text-6xl font-light text-bronze-light">
+              {a.route_usage.followed_pct != null ? `${a.route_usage.followed_pct}%` : '—'}
+            </p>
+            <p className="text-sm text-sand-200">
+              {a.route_usage.followed_pct != null ? 'of chosen routes were the recommended one' : 'No route chosen yet. Use "Use this route" in the Route Planner.'}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm">
+              <div>
+                <div className="font-display text-2xl text-sand-50">{a.route_usage.searches}</div>
+                <div className="text-[11px] text-sand-300">route searches</div>
+              </div>
+              <div>
+                <div className="font-display text-2xl text-sand-50">{a.route_usage.chosen}</div>
+                <div className="text-[11px] text-sand-300">with a chosen route</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-4xl border border-white/80 bg-white/55 p-6">
+            <p className="eyebrow">Which routes people use</p>
+            <h3 className="display mb-4 text-2xl">Chosen route types</h3>
+            {a.route_usage.chosen_by_type.length === 0 ? (
+              <p className="text-sm text-ink-muted">No choices yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {a.route_usage.chosen_by_type.map((t) => {
+                  const pct = a.route_usage!.chosen ? Math.round((100 * t.count) / a.route_usage!.chosen) : 0;
+                  return (
+                    <div key={t.type}>
+                      <div className="flex justify-between text-sm">
+                        <span className="capitalize text-ink">{t.type.replace('_', ' ')}</span>
+                        <span className="text-ink-muted">{t.count} · {pct}%</span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-sand-200">
+                        <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: routeColor(t.type) }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-4xl border border-white/80 bg-white/55 p-6">
+            <p className="eyebrow">All users</p>
+            <h3 className="display mb-4 text-2xl">Most searched trips</h3>
+            {a.route_usage.top_trips.length === 0 ? (
+              <p className="text-sm text-ink-muted">No searches yet.</p>
+            ) : (
+              <ol className="space-y-2.5">
+                {a.route_usage.top_trips.map((t, i) => (
+                  <li key={`${t.source.node_id}-${t.destination.node_id}`} className="flex items-start gap-3 text-sm">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] text-sand-50">{i + 1}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-ink" title={`${t.source.name} → ${t.destination.name}`}>
+                        {tripLabel(t.source.node_id, t.source.name)} → {tripLabel(t.destination.node_id, t.destination.name)}
+                      </span>
+                      <span className="text-[11px] text-ink-faint">{t.searches} {t.searches === 1 ? 'search' : 'searches'} · {t.chosen} chosen</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }

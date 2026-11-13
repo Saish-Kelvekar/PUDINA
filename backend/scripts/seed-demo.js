@@ -30,7 +30,8 @@ const readJson = (f) => JSON.parse(fs.readFileSync(path.join(DIR, f), "utf8"));
     await client.query("BEGIN");
     if (RESET) {
       await client.query("TRUNCATE incidents, incident_logs, incident_duplicates RESTART IDENTITY CASCADE");
-      console.log("Deleted all incidents (--reset)");
+      await client.query("TRUNCATE route_comparisons, emergency_sessions, signal_simulations RESTART IDENTITY");
+      console.log("Deleted all incidents, route searches, emergency sessions and signal simulations (--reset)");
     }
 
     // Users: add, or update name/role/password if the email exists
