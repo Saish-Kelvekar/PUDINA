@@ -9,6 +9,8 @@ venv/
 ml-service/models/
 *.joblib
 *.graphml
+cache/
+data/cache/
 
 # Node / env
 node_modules/
