@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
@@ -14,6 +14,15 @@ import { cn, istTime } from '@/lib/utils';
 import { useLiveIncidents } from '@/lib/realtime';
 import { Layers, RefreshCw, Activity, AlertTriangle, Clock, Gauge, ArrowUpRight } from 'lucide-react';
 
+const NO_ROUTES: never[] = [];
+
+// Cheap fingerprints of the data, so an unchanged 30 s refresh does not re-render the map.
+const sig2 = (n?: number | null) => (n == null ? 'x' : Math.round(n * 100));
+const edgesSig = (es: EdgeCongestion[]) => es.map((e) => `${e.segment_id}:${sig2(e.congestion)}`).join('|');
+const incidentsSig = (is: Incident[]) => is.map((i) => `${i.id}:${i.status}:${i.severity}`).join('|');
+const predSig = (ps: Array<EdgeCongestion & { predicted_congestion?: number }>) =>
+  ps.map((p) => `${p.segment_id}:${sig2(p.predicted_congestion)}`).join('|');
+
 export default function MapPage() {
   const { add } = useToast() as any;
   const [edges, setEdges] = useState<EdgeCongestion[]>([]);
@@ -23,6 +32,15 @@ export default function MapPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPredicted, setShowPredicted] = useState(false);
   const [predicted, setPredicted] = useState<Array<EdgeCongestion & { predicted_congestion?: number }>>([]);
+  const sigs = useRef({ edges: '', incidents: '', predicted: '' });
+
+  const applyIncidents = useCallback((next: Incident[]) => {
+    const s = incidentsSig(next);
+    if (s !== sigs.current.incidents) {
+      sigs.current.incidents = s;
+      setIncidents(next);
+    }
+  }, []);
 
   const fetchMapData = useCallback(async () => {
     setLoading(true);
@@ -34,9 +52,18 @@ export default function MapPage() {
         apiClient.getPredictions(15).catch(() => null),
         apiClient.getSimClock().catch(() => null),
       ]);
-      setEdges(trafficRes);
-      setIncidents(incidentsRes);
-      setPredicted(predRes?.items ?? []);
+      const eSig = edgesSig(trafficRes);
+      if (eSig !== sigs.current.edges) {
+        sigs.current.edges = eSig;
+        setEdges(trafficRes);
+      }
+      applyIncidents(incidentsRes);
+      const preds = predRes?.items ?? [];
+      const pSig = predSig(preds);
+      if (pSig !== sigs.current.predicted) {
+        sigs.current.predicted = pSig;
+        setPredicted(preds);
+      }
       setSimTime(clock?.sim_time_utc ?? null);
     } catch (err: any) {
       setError(err.message || 'Failed to load map data');
@@ -44,7 +71,7 @@ export default function MapPage() {
     } finally {
       setLoading(false);
     }
-  }, [add]);
+  }, [add, applyIncidents]);
 
   useEffect(() => {
     fetchMapData();
@@ -53,7 +80,7 @@ export default function MapPage() {
   }, [fetchMapData]);
 
   useLiveIncidents((e) => {
-    apiClient.getIncidents().then(setIncidents).catch(() => {});
+    apiClient.getIncidents().then(applyIncidents).catch(() => {});
     add?.('info', e.type === 'incident:new' ? 'New incident reported' : 'Incident verified',
       e.incident ? `${e.incident.category} · #${e.incident.id}` : undefined);
   });
@@ -80,7 +107,7 @@ export default function MapPage() {
         <MapView
           edges={edges}
           incidents={incidents}
-          routes={[]}
+          routes={NO_ROUTES}
           predictedEdges={predicted}
           showPredicted={showPredicted}
         />

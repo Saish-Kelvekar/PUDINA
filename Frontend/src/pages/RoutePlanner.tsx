@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,7 @@ import {
   type PickedPoint,
   pickPins,
   pointFromClick,
+  OUTSIDE_MSG,
   nextPicks,
   toRoutePoint,
 } from '@/components/RoutePointPicker';
@@ -59,16 +60,23 @@ export default function RoutePlanner() {
     }
   }, [from, to, add]);
 
-  const handleMapClick = async (lat: number, lng: number) => {
+  const handleMapClick = useCallback(async (lat: number, lng: number) => {
     const p = await pointFromClick(lat, lng);
+    if (!p) {
+      add?.('warning', OUTSIDE_MSG);
+      return;
+    }
     const [a, b] = nextPicks(from, to, p);
     setPoints(a, b);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, add]);
 
   // Highlight the selected card's route on the map; dim the rest.
-  const mapRoutes = routes
-    .filter((r) => !r.same_path_as || r.id === selectedId)
-    .map((r) => ({ ...r, recommended: r.id === selectedId }));
+  const mapRoutes = useMemo(
+    () => routes.filter((r) => !r.same_path_as || r.id === selectedId).map((r) => ({ ...r, recommended: r.id === selectedId })),
+    [routes, selectedId],
+  );
+  const pins = useMemo(() => pickPins(from, to), [from, to]);
 
   return (
     <MapStage
@@ -78,7 +86,7 @@ export default function RoutePlanner() {
           incidents={[]}
           routes={mapRoutes}
           onMapClick={handleMapClick}
-          pins={pickPins(from, to)}
+          pins={pins}
         />
       }
       overlay={

@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import type { EdgeCongestion, RouteResult, Incident } from '@/types';
 import { congestionColor, congestionLabel, statusColor, CONGESTION_COLORS } from '@/lib/colors';
-import { DEFAULT_CENTER } from '@/api/api';
+import { DEFAULT_CENTER, loadGraph } from '@/api/api';
 
 // Ensure default Leaflet marker icons resolve
 const DEFAULT_ICON = L.icon({
@@ -26,47 +26,104 @@ const edgeLatLngs = (e: EdgeCongestion): L.LatLngExpression[] =>
     ? (e.coords as L.LatLngExpression[])
     : [[e.from_lat, e.from_lng], [e.to_lat, e.to_lng]];
 
-/** Keeps one LayerGroup per overlay and redraws it when `deps` change. */
-function useLayerGroup(draw: (group: L.LayerGroup, map: L.Map) => void, deps: unknown[]) {
-  const map = useMap();
-  const layerRef = useRef<L.LayerGroup | null>(null);
-  useEffect(() => {
-    if (!layerRef.current) layerRef.current = L.layerGroup().addTo(map);
-    const group = layerRef.current;
-    group.clearLayers();
-    draw(group, map);
-    return () => {
-      group.clearLayers();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, ...deps]);
+/**
+ * One canvas renderer per map, shared by every vector layer on it. A single canvas is far
+ * cheaper to redraw while zooming than thousands of individually-managed paths.
+ */
+function getRenderer(map: L.Map): L.Canvas {
+  const m = map as L.Map & { _tvRenderer?: L.Canvas };
+  if (!m._tvRenderer) m._tvRenderer = L.canvas({ padding: 0.5, tolerance: 6 });
+  return m._tvRenderer;
 }
 
+/**
+ * Keeps one LayerGroup per overlay. It only clears and redraws when `signature` changes, so
+ * periodic refreshes that return identical data do not rebuild the map.
+ */
+function useLayerGroup(signature: string, draw: (group: L.LayerGroup, renderer: L.Canvas) => void) {
+  const map = useMap();
+  const layerRef = useRef<L.LayerGroup | null>(null);
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+
+  useEffect(() => {
+    const group = L.layerGroup().addTo(map);
+    layerRef.current = group;
+    return () => {
+      group.remove();
+      layerRef.current = null;
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const group = layerRef.current;
+    if (!group) return;
+    group.clearLayers();
+    drawRef.current(group, getRenderer(map));
+  }, [map, signature]);
+}
+
+const r2 = (n: number | undefined | null) => (n == null ? 'x' : (Math.round(n * 100) / 100).toString());
+
+/**
+ * The whole street network (thin grey) drawn ONCE as a single multi-polyline, plus a dashed
+ * outline of the covered area. Also stops the map from panning or zooming far outside it,
+ * because there are no roads or traffic data there.
+ */
+function NetworkLayer() {
+  const map = useMap();
+  useEffect(() => {
+    let cancelled = false;
+    const layers: L.Layer[] = [];
+    loadGraph()
+      .then((g) => {
+        if (cancelled) return;
+        const renderer = getRenderer(map);
+        const lines = g.edges.filter((e) => e.coords.length >= 2).map((e) => e.coords as L.LatLngExpression[]);
+        layers.push(
+          L.polyline(lines, { color: '#8A8178', weight: 1.5, opacity: 0.35, interactive: false, renderer }).addTo(map),
+          L.rectangle(g.bounds, {
+            color: '#9A6B4F',
+            weight: 1.5,
+            opacity: 0.7,
+            dashArray: '6, 8',
+            fill: false,
+            interactive: false,
+            renderer,
+          }).addTo(map),
+        );
+        map.setMaxBounds(g.paddedBounds);
+        map.options.maxBoundsViscosity = 1;
+        map.setMinZoom(14);
+      })
+      .catch(() => {
+        /* the page shows its own error state if the API is down */
+      });
+    return () => {
+      cancelled = true;
+      layers.forEach((l) => l.remove());
+    };
+  }, [map]);
+  return null;
+}
+
+/** Monitored roads only (~188): coloured by congestion, popup content built on click. */
 function TrafficLayer({ edges }: { edges: EdgeCongestion[] }) {
-  useLayerGroup((group) => {
-    // Only the monitored main roads carry traffic data; the rest of the street network is drawn
-    // as a faint, non-interactive base layer underneath.
-    const measured = edges.filter((e) => e.congestion >= 0);
-    edges.forEach((e) => {
-      if (e.congestion >= 0) return;
-      L.polyline(edgeLatLngs(e), { color: '#8A8178', weight: 1.5, opacity: 0.35, interactive: false }).addTo(group);
-    });
-    const casing = measured.length <= 800;
+  const measured = edges.filter((e) => e.congestion >= 0);
+  const signature = measured.map((e) => `${e.segment_id ?? e.from}:${r2(e.congestion)}`).join('|');
+  useLayerGroup(signature, (group, renderer) => {
     measured.forEach((e) => {
-      const latlngs = edgeLatLngs(e);
-      const color = congestionColor(e.congestion);
-      if (casing) {
-        L.polyline(latlngs, { color: '#FBF9F6', weight: 9, opacity: 0.9, lineCap: 'round', interactive: false }).addTo(group);
-      }
-      L.polyline(latlngs, {
-        color,
+      L.polyline(edgeLatLngs(e), {
+        color: congestionColor(e.congestion),
         weight: 5,
         opacity: 0.95,
         lineJoin: 'round',
         lineCap: 'round',
+        renderer,
       })
         .bindPopup(
-          `<strong>${esc(e.street_name ?? `${e.from} → ${e.to}`)}</strong><br/>` +
+          () =>
+            `<strong>${esc(e.street_name ?? `${e.from} → ${e.to}`)}</strong><br/>` +
             `Congestion: ${esc(congestionLabel(e.congestion))}` +
             (e.speed_kmph != null ? ` · ${Math.round(e.speed_kmph)} km/h` : '') +
             `<br/>Free-flow speed: ${esc(e.speed_limit)} km/h<br/>` +
@@ -75,12 +132,13 @@ function TrafficLayer({ edges }: { edges: EdgeCongestion[] }) {
         )
         .addTo(group);
     });
-  }, [edges]);
+  });
   return null;
 }
 
 function PredictedLayer({ edges }: { edges: Array<EdgeCongestion & { predicted_congestion?: number }> }) {
-  useLayerGroup((group) => {
+  const signature = edges.map((e) => `${e.segment_id ?? e.from}:${r2(e.predicted_congestion ?? e.congestion)}`).join('|');
+  useLayerGroup(signature, (group, renderer) => {
     edges.forEach((e) => {
       const pred = e.predicted_congestion ?? e.congestion;
       L.polyline(edgeLatLngs(e), {
@@ -90,21 +148,26 @@ function PredictedLayer({ edges }: { edges: Array<EdgeCongestion & { predicted_c
         dashArray: '2, 9',
         lineCap: 'round',
         lineJoin: 'round',
+        renderer,
       })
         .bindPopup(
-          `<strong>${esc(e.street_name ?? `${e.from} → ${e.to}`)}</strong><br/>` +
+          () =>
+            `<strong>${esc(e.street_name ?? `${e.from} → ${e.to}`)}</strong><br/>` +
             `Predicted: ${esc(congestionLabel(pred))} (${Math.round(Math.max(0, pred) * 100)}%)<br/>` +
             (e.confidence != null ? `Confidence: ${Math.round(e.confidence * 100)}%<br/>` : '') +
             `<span style="opacity:0.7">AI_PREDICTED</span>`,
         )
         .addTo(group);
     });
-  }, [edges]);
+  });
   return null;
 }
 
 function RouteLines({ routes }: { routes: RouteResult[] }) {
-  useLayerGroup((group) => {
+  const signature = routes
+    .map((r) => `${r.id ?? r.label}:${r.coords.length}:${r.coords[0]?.lat ?? ''}:${r.recommended ? 1 : 0}:${r.color}`)
+    .join('|');
+  useLayerGroup(signature, (group, renderer) => {
     // Draw the recommended route last so it sits on top.
     const ordered = [...routes].sort((a, b) => Number(!!a.recommended) - Number(!!b.recommended));
     ordered.forEach((r) => {
@@ -112,7 +175,15 @@ function RouteLines({ routes }: { routes: RouteResult[] }) {
       const latlngs: L.LatLngExpression[] = r.coords.map((c) => [c.lat, c.lng] as [number, number]);
       const isEmergency = r.type === 'emergency' || r.label.toLowerCase().includes('emergency');
       const strong = r.recommended || isEmergency;
-      L.polyline(latlngs, { color: '#1F1D1B', weight: strong ? 12 : 9, opacity: 0.16, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(group);
+      L.polyline(latlngs, {
+        color: '#1F1D1B',
+        weight: strong ? 12 : 9,
+        opacity: 0.16,
+        lineCap: 'round',
+        lineJoin: 'round',
+        interactive: false,
+        renderer,
+      }).addTo(group);
       L.polyline(latlngs, {
         color: r.color,
         weight: strong ? 7 : 5,
@@ -120,33 +191,39 @@ function RouteLines({ routes }: { routes: RouteResult[] }) {
         lineCap: 'round',
         dashArray: isEmergency ? '10, 8' : undefined,
         lineJoin: 'round',
+        renderer,
       })
         .bindPopup(
-          `<strong>${esc(r.label)}</strong><br/>` +
+          () =>
+            `<strong>${esc(r.label)}</strong><br/>` +
             `Distance: ${esc(r.total_distance_km)} km<br/>` +
             `ETA: ${esc(r.total_time_min)} min` +
-            (r.reliability_pct ? `<br/>Congestion: ${Math.round(r.avg_congestion * 100)}%<br/>Incidents: ${esc(r.incidents)}<br/>Reliability: ${esc(r.reliability_pct)}%` : '') +
+            (r.reliability_pct
+              ? `<br/>Congestion: ${Math.round(r.avg_congestion * 100)}%<br/>Incidents: ${esc(r.incidents)}<br/>Reliability: ${esc(r.reliability_pct)}%`
+              : '') +
             (r.signals_on_route != null ? `<br/>Signals on route: ${esc(r.signals_on_route)}` : ''),
         )
         .addTo(group);
     });
-  }, [routes]);
+  });
   return null;
 }
 
 function IncidentMarkers({ incidents }: { incidents: Incident[] }) {
-  useLayerGroup((group) => {
+  const signature = incidents.map((i) => `${i.id}:${i.status}:${i.severity}:${i.lat}:${i.lng}`).join('|');
+  useLayerGroup(signature, (group, renderer) => {
     incidents.forEach((inc) => {
-      const color = statusColor(inc.status);
       L.circleMarker([inc.lat, inc.lng] as [number, number], {
         radius: inc.is_closure ? 11 : 9,
         color: '#FBF9F6',
-        fillColor: color,
+        fillColor: statusColor(inc.status),
         fillOpacity: 1,
         weight: 3,
+        renderer,
       })
         .bindPopup(
-          `<strong>${esc(inc.type)}${inc.is_closure ? ' · closure' : ''}</strong><br/>` +
+          () =>
+            `<strong>${esc(inc.type)}${inc.is_closure ? ' · closure' : ''}</strong><br/>` +
             (inc.description ? `${esc(inc.description)}<br/>` : '') +
             `Severity: ${esc(inc.severity)} · Status: ${esc(inc.status)}<br/>` +
             (inc.nearby_node ? `Near: ${esc(inc.nearby_node)}<br/>` : '') +
@@ -155,7 +232,7 @@ function IncidentMarkers({ incidents }: { incidents: Incident[] }) {
         )
         .addTo(group);
     });
-  }, [incidents]);
+  });
   return null;
 }
 
@@ -168,7 +245,8 @@ export interface MapPin {
 }
 
 function Pins({ pins }: { pins: MapPin[] }) {
-  useLayerGroup((group) => {
+  const signature = pins.map((p) => `${p.lat}:${p.lng}:${p.label}:${p.color ?? ''}:${p.title ?? ''}`).join('|');
+  useLayerGroup(signature, (group) => {
     pins.forEach((p) => {
       const icon = L.divIcon({
         className: '',
@@ -180,7 +258,7 @@ function Pins({ pins }: { pins: MapPin[] }) {
       if (p.title) m.bindTooltip(esc(p.title), { direction: 'top', offset: [0, -14] });
       m.addTo(group);
     });
-  }, [pins]);
+  });
   return null;
 }
 
@@ -193,7 +271,8 @@ export interface MapLine {
 }
 
 function ExtraLines({ lines }: { lines: MapLine[] }) {
-  useLayerGroup((group) => {
+  const signature = lines.map((l) => `${l.coords.length}:${l.coords[0]?.join(',') ?? ''}:${l.color}:${l.title ?? ''}`).join('|');
+  useLayerGroup(signature, (group, renderer) => {
     lines.forEach((l) => {
       if (l.coords.length < 2) return;
       const pl = L.polyline(l.coords as L.LatLngExpression[], {
@@ -203,11 +282,15 @@ function ExtraLines({ lines }: { lines: MapLine[] }) {
         dashArray: l.dash,
         lineCap: 'round',
         lineJoin: 'round',
+        renderer,
       });
-      if (l.title) pl.bindPopup(`<strong>${esc(l.title)}</strong>`);
+      if (l.title) {
+        const title = l.title;
+        pl.bindPopup(() => `<strong>${esc(title)}</strong>`);
+      }
       pl.addTo(group);
     });
-  }, [lines]);
+  });
   return null;
 }
 
@@ -221,16 +304,23 @@ function Recenter({ center, zoom }: { center?: [number, number]; zoom?: number }
       first.current = false;
       return;
     }
-    if (center) map.flyTo(center, zoom ?? map.getZoom(), { duration: 0.6 });
+    if (!center) return;
+    // Lift the pan limit while animating so it cannot fight the fly-to; restore it afterwards.
+    const limit = map.options.maxBounds;
+    if (limit) map.setMaxBounds(null as unknown as L.LatLngBounds);
+    map.flyTo(center, zoom ?? map.getZoom(), { duration: 0.6 });
+    if (limit) map.once('moveend', () => map.setMaxBounds(limit));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return null;
 }
 
 function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+  const ref = useRef(onClick);
+  ref.current = onClick;
   useMapEvents({
     click(e) {
-      onClick?.(e.latlng.lat, e.latlng.lng);
+      ref.current?.(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
@@ -252,7 +342,10 @@ interface MapViewProps {
 const NO_PINS: MapPin[] = [];
 const NO_LINES: MapLine[] = [];
 
-export function MapView({
+// Tiles: don't fetch new tiles mid-animation (it causes jank); load them once the zoom settles.
+const TILE_PERF = { updateWhenZooming: false, updateWhenIdle: true, keepBuffer: 4 } as const;
+
+function MapViewImpl({
   edges,
   incidents,
   routes,
@@ -268,6 +361,7 @@ export function MapView({
     <MapContainer
       center={center ?? DEFAULT_CENTER}
       zoom={zoom}
+      minZoom={14}
       preferCanvas
       style={{ height: '100%', width: '100%', position: 'relative', zIndex: 0, cursor: onMapClick ? 'crosshair' : undefined }}
       zoomControl={false}
@@ -279,16 +373,19 @@ export function MapView({
         attribution="Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
         maxNativeZoom={16}
         maxZoom={19}
+        {...TILE_PERF}
       />
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
         maxNativeZoom={16}
         maxZoom={19}
         className="tv-labels"
+        {...TILE_PERF}
       />
       <ZoomControl position="topright" />
       <Recenter center={center} zoom={zoom} />
       <ClickHandler onClick={onMapClick} />
+      <NetworkLayer />
       <TrafficLayer edges={edges} />
       {showPredicted && predictedEdges && <PredictedLayer edges={predictedEdges} />}
       <ExtraLines lines={lines} />
@@ -298,3 +395,6 @@ export function MapView({
     </MapContainer>
   );
 }
+
+/** Memoised so parent re-renders (timers, toasts, form typing) don't re-run the map layers. */
+export const MapView = memo(MapViewImpl);

@@ -173,8 +173,22 @@
   background: #E8E2D9;
 }
 .leaflet-tile-pane {
-  /* warm the grey basemap into the stone palette */
-  filter: sepia(0.35) saturate(0.9) brightness(1.02);
+  /* Warm the grey basemap by letting the warm container background show through.
+     (A CSS filter here would force every tile to be re-rasterised on each zoom frame.) */
+  opacity: 0.86;
+}
+
+/* Glass panels floating over a moving map: smaller blur radius, slightly more opaque.
+   Looks the same, but is much cheaper to recompute while the map pans and zooms. */
+.map-stage .glass,
+.map-stage .glass-strong {
+  background-color: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.map-stage .glass-dark {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
 }
 .leaflet-control-attribution {
   background: rgba(251, 249, 246, 0.7) !important;
