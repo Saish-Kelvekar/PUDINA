@@ -7,7 +7,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "node --test",
-    "test:db": "node scripts/check-db.js"
+    "test:db": "node scripts/check-db.js",
+    "demo:check": "node scripts/demo-check.js",
+    "seed": "node scripts/seed-demo.js --reset"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +25,7 @@
     "socket.io": "^4.8.4"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.4"
   }
 }
