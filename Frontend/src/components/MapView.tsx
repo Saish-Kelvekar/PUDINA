@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet';
+import { useTheme, useThemeColors, themeColors } from '@/lib/theme';
 import L from 'leaflet';
 import type { EdgeCongestion, RouteResult, Incident } from '@/types';
 import { congestionColor, congestionLabel, statusColor, CONGESTION_COLORS } from '@/lib/colors';
@@ -72,6 +73,7 @@ const r2 = (n: number | undefined | null) => (n == null ? 'x' : (Math.round(n * 
  */
 function NetworkLayer() {
   const map = useMap();
+  const tc = useThemeColors();
   useEffect(() => {
     let cancelled = false;
     const layers: L.Layer[] = [];
@@ -81,11 +83,11 @@ function NetworkLayer() {
         const renderer = getRenderer(map);
         const lines = g.edges.filter((e) => e.coords.length >= 2).map((e) => e.coords as L.LatLngExpression[]);
         layers.push(
-          L.polyline(lines, { color: '#B3ADA8', weight: 1.5, opacity: 0.22, interactive: false, renderer }).addTo(map),
+          L.polyline(lines, { color: tc.networkLine, weight: 1.5, opacity: tc.networkOpacity, interactive: false, renderer }).addTo(map),
           L.rectangle(g.bounds, {
-            color: '#E3A034',
+            color: tc.outline,
             weight: 1.5,
-            opacity: 0.6,
+            opacity: 0.65,
             dashArray: '6, 8',
             fill: false,
             interactive: false,
@@ -164,6 +166,7 @@ function PredictedLayer({ edges }: { edges: Array<EdgeCongestion & { predicted_c
 }
 
 function RouteLines({ routes }: { routes: RouteResult[] }) {
+  const tc = useThemeColors();
   const signature = routes
     .map((r) => `${r.id ?? r.label}:${r.coords.length}:${r.coords[0]?.lat ?? ''}:${r.recommended ? 1 : 0}:${r.color}`)
     .join('|');
@@ -176,9 +179,9 @@ function RouteLines({ routes }: { routes: RouteResult[] }) {
       const isEmergency = r.type === 'emergency' || r.label.toLowerCase().includes('emergency');
       const strong = r.recommended || isEmergency;
       L.polyline(latlngs, {
-        color: '#000000',
+        color: tc.routeShadow,
         weight: strong ? 12 : 9,
-        opacity: 0.4,
+        opacity: tc.routeShadowOpacity,
         lineCap: 'round',
         lineJoin: 'round',
         interactive: false,
@@ -245,6 +248,7 @@ export interface MapPin {
 }
 
 function Pins({ pins }: { pins: MapPin[] }) {
+  const tc = useThemeColors();
   const signature = pins.map((p) => `${p.lat}:${p.lng}:${p.label}:${p.color ?? ''}:${p.title ?? ''}`).join('|');
   useLayerGroup(signature, (group) => {
     pins.forEach((p) => {
@@ -252,7 +256,7 @@ function Pins({ pins }: { pins: MapPin[] }) {
         className: '',
         iconSize: [30, 30],
         iconAnchor: [15, 15],
-        html: `<div style="width:30px;height:30px;border-radius:999px;background:${p.color ?? '#FFFFFF'};color:${p.color ? '#FFFFFF' : '#14110E'};display:flex;align-items:center;justify-content:center;font:600 12px Manrope,sans-serif;border:3px solid ${p.color ? '#FFFFFF' : '#14110E'};box-shadow:0 6px 16px -6px rgba(0,0,0,.7)">${esc(p.label)}</div>`,
+        html: `<div style="width:30px;height:30px;border-radius:999px;background:${p.color ?? tc.pinBg};color:${p.color ? '#FFFFFF' : tc.pinFg};display:flex;align-items:center;justify-content:center;font:600 12px Manrope,sans-serif;border:3px solid ${p.color ? '#FFFFFF' : tc.pinBorder};box-shadow:0 6px 16px -6px rgba(0,0,0,.7)">${esc(p.label)}</div>`,
       });
       const m = L.marker([p.lat, p.lng], { icon, keyboard: false });
       if (p.title) m.bindTooltip(esc(p.title), { direction: 'top', offset: [0, -14] });
@@ -357,8 +361,11 @@ function MapViewImpl({
   pins = NO_PINS,
   lines = NO_LINES,
 }: MapViewProps) {
+  const { theme } = useTheme();
+  const tiles = themeColors(theme).tiles; // 'Dark' or 'Light'
   return (
     <MapContainer
+      key={theme} /* redraw everything in the new colours when the theme changes */
       center={center ?? DEFAULT_CENTER}
       zoom={zoom}
       minZoom={14}
@@ -367,16 +374,16 @@ function MapViewImpl({
       zoomControl={false}
       attributionControl
     >
-      {/* Esri Dark Gray Canvas: a quiet, key-free night basemap so traffic colours stand out. */}
+      {/* Esri Gray Canvas (dark at night, light by day): a quiet, key-free basemap so traffic colours stand out. */}
       <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        url={`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${tiles}_Gray_Base/MapServer/tile/{z}/{y}/{x}`}
         attribution="Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
         maxNativeZoom={16}
         maxZoom={19}
         {...TILE_PERF}
       />
       <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+        url={`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${tiles}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`}
         maxNativeZoom={16}
         maxZoom={19}
         className="tv-labels"

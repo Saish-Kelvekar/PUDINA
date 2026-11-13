@@ -16,6 +16,9 @@ import Admin from '@/pages/Admin';
 import Analytics from '@/pages/Analytics';
 import LiveCamera from '@/pages/LiveCamera';
 import { ToastProvider } from '@/components/ui/Toast';
+import { Preferences } from '@/components/Preferences';
+import { ThemeProvider } from '@/lib/theme';
+import { LanguageProvider } from '@/lib/i18n';
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { state } = useAuth();
@@ -86,6 +89,7 @@ function AppShell() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Preferences />
           <div className="hidden items-center gap-3 rounded-full bg-ink py-1.5 pl-5 pr-1.5 text-sand-50 shadow-frame sm:flex">
             <div className="leading-tight">
               <p className="text-xs font-semibold">{state.user?.name ?? 'Guest'}</p>
@@ -142,10 +146,14 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <AppShell />
-      </ToastProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppShell />
+          </ToastProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

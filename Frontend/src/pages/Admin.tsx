@@ -1,3 +1,4 @@
+import { useThemeColors } from '@/lib/theme';
 import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { MapView, type MapLine } from '@/components/MapView';
@@ -17,6 +18,7 @@ import { Link } from 'react-router-dom';
 const LEVEL_AFTER: Record<string, number> = { flowing: 0.1, moderate: 0.4, heavy: 0.65, severe: 0.9, closed: 1 };
 
 export default function Admin() {
+  const tc = useThemeColors();
   const { add } = useToast() as any;
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [duplicates, setDuplicates] = useState<DuplicatePair[]>([]);
@@ -101,7 +103,7 @@ export default function Admin() {
         const closed = a.congestion_level_after === 'closed';
         lines.push({
           coords: e.coords,
-          color: closed ? '#FFFFFF' : congestionColor(LEVEL_AFTER[a.congestion_level_after] ?? -1),
+          color: closed ? tc.closedRoad : congestionColor(LEVEL_AFTER[a.congestion_level_after] ?? -1),
           weight: a.hops === 0 ? 8 : 6,
           dash: closed ? '4, 6' : undefined,
           title: `${e.name ?? a.segment_id}: ${a.congestion_level_after}${a.extra_delay_s != null ? ` · +${Math.round(a.extra_delay_s)}s` : ''}`,
