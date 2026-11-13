@@ -16,4 +16,7 @@ module.exports = {
   // When two route types give the same path, used roads get this much more expensive and we search again
   ALTERNATIVE_MULTIPLIER: 1.5,
   MAX_ALTERNATIVE_TRIES: 10,
+
+  // A clicked source/destination must be this close to a junction, or we ask the user to click on the map's roads
+  MAX_SNAP_DISTANCE_M: 300,
 };

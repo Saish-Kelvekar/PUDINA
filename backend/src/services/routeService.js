@@ -7,7 +7,7 @@ const { compareRoutes } = require("./routePlanner");
 const incidentRepo = require("../repositories/incidentRepository");
 const routeRepo = require("../repositories/routeRepository");
 const AppError = require("../utils/AppError");
-const { SIGNAL_WAIT_S } = require("../config/constants");
+const { SIGNAL_WAIT_S, MAX_SNAP_DISTANCE_M } = require("../config/constants");
 
 // { node_id } -> that junction; { lat, lng } -> nearest junction
 function resolvePoint(p, field) {
@@ -17,6 +17,11 @@ function resolvePoint(p, field) {
     return { node_id: n.id, name: n.name, lat: n.lat, lng: n.lng, snapped_m: 0 };
   }
   const { node, distance_m } = graphService.nearestNode(p.lat, p.lng);
+  if (distance_m > MAX_SNAP_DISTANCE_M) {
+    throw new AppError(400, "VALIDATION_ERROR",
+      `${field} is ${distance_m} m from the nearest junction. Pick a point closer to the roads on the map.`,
+      [{ field, issue: `must be within ${MAX_SNAP_DISTANCE_M} m of a junction` }]);
+  }
   return { node_id: node.id, name: node.name, lat: node.lat, lng: node.lng, snapped_m: distance_m };
 }
 
