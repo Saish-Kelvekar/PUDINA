@@ -1,0 +1,152 @@
+{
+  "success": true,
+  "data": {
+    "incident_id": 101,
+    "mode": "lane_blockage",
+    "speed_factor": 0.5,
+    "max_hops": 3,
+    "hop_factors": {
+      "0": 0.5,
+      "1": 0.85,
+      "2": 0.93,
+      "3": 0.97
+    },
+    "affected_segments": [
+      {
+        "segment_id": "e7",
+        "hops": 0,
+        "speed_before_kmph": 8.0,
+        "speed_after_kmph": 4.0,
+        "extra_delay_s": 166,
+        "congestion_level_after": "severe"
+      },
+      {
+        "segment_id": "e1",
+        "hops": 1,
+        "speed_before_kmph": 14.0,
+        "speed_after_kmph": 11.9,
+        "extra_delay_s": 19,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e2",
+        "hops": 1,
+        "speed_before_kmph": 24.0,
+        "speed_after_kmph": 20.4,
+        "extra_delay_s": 11,
+        "congestion_level_after": "moderate"
+      },
+      {
+        "segment_id": "e4",
+        "hops": 1,
+        "speed_before_kmph": 17.0,
+        "speed_after_kmph": 14.4,
+        "extra_delay_s": 10,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e6",
+        "hops": 1,
+        "speed_before_kmph": 13.0,
+        "speed_after_kmph": 11.0,
+        "extra_delay_s": 14,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e3",
+        "hops": 2,
+        "speed_before_kmph": 14.0,
+        "speed_after_kmph": 13.0,
+        "extra_delay_s": 8,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e5",
+        "hops": 2,
+        "speed_before_kmph": 18.0,
+        "speed_after_kmph": 16.7,
+        "extra_delay_s": 11,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e8",
+        "hops": 2,
+        "speed_before_kmph": 16.0,
+        "speed_after_kmph": 14.9,
+        "extra_delay_s": 7,
+        "congestion_level_after": "heavy"
+      },
+      {
+        "segment_id": "e9",
+        "hops": 2,
+        "speed_before_kmph": 22.0,
+        "speed_after_kmph": 20.5,
+        "extra_delay_s": 6,
+        "congestion_level_after": "moderate"
+      },
+      {
+        "segment_id": "e10",
+        "hops": 2,
+        "speed_before_kmph": 11.0,
+        "speed_after_kmph": 10.2,
+        "extra_delay_s": 9,
+        "congestion_level_after": "heavy"
+      }
+    ],
+    "total_extra_delay_min": 4.3,
+    "detour_minutes": 0.5,
+    "diversion_route": {
+      "from_node": "n2",
+      "to_node": "n5",
+      "node_ids": [
+        "n2",
+        "n1",
+        "n5"
+      ],
+      "edge_ids": [
+        "e1",
+        "e4"
+      ],
+      "coords": [
+        [
+          12.9324,
+          77.5598
+        ],
+        [
+          12.9317,
+          77.558
+        ],
+        [
+          12.931,
+          77.5562
+        ],
+        [
+          12.9303,
+          77.5572
+        ],
+        [
+          12.9296,
+          77.558
+        ]
+      ],
+      "distance_km": 0.67,
+      "eta_min": 3.5
+    },
+    "blocked_route": {
+      "node_ids": [
+        "n2",
+        "n1",
+        "n5"
+      ],
+      "edge_ids": [
+        "e1",
+        "e4"
+      ],
+      "eta_min_before": 3.0,
+      "eta_min_after": 3.5
+    },
+    "source": "SIMULATED",
+    "computed_at": "2026-11-10T03:31:12Z"
+  },
+  "error": null
+}

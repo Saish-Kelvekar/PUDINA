@@ -1,0 +1,451 @@
+{
+  "success": true,
+  "data": {
+    "comparison_id": 501,
+    "sim_time_utc": "2026-11-10T03:30:00Z",
+    "source": {
+      "node_id": "n5",
+      "name": "Jyothi Nivas College Junction",
+      "lat": 12.9296,
+      "lng": 77.558,
+      "snapped_m": 0
+    },
+    "destination": {
+      "node_id": "n7",
+      "name": "St. John's Junction",
+      "lat": 12.9368,
+      "lng": 77.567,
+      "snapped_m": 0
+    },
+    "weights": {
+      "time": 0.35,
+      "distance": 0.15,
+      "congestion": 0.2,
+      "incidents": 0.15,
+      "fuel": 0.05,
+      "reliability": 0.1
+    },
+    "recommended_route_id": "r1",
+    "traffic_source": "SIMULATED",
+    "signal_wait_assumption_s": 20,
+    "routes": [
+      {
+        "route_id": "r1",
+        "type": "fastest",
+        "label": "Fastest",
+        "is_alternative": false,
+        "same_path_as": null,
+        "node_ids": [
+          "n5",
+          "n1",
+          "n2",
+          "n3",
+          "n7"
+        ],
+        "edge_ids": [
+          "e4",
+          "e1",
+          "e2",
+          "e9"
+        ],
+        "coords": [
+          [
+            12.9296,
+            77.558
+          ],
+          [
+            12.9303,
+            77.5572
+          ],
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9317,
+            77.558
+          ],
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.9331,
+            77.5616
+          ],
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ],
+        "distance_km": 1.6,
+        "eta_min": 6.1,
+        "eta_s": 367,
+        "congestion_pct": 49,
+        "signals_on_route": 3,
+        "incident_ids": [],
+        "incident_count": 0,
+        "fuel_litres": 0.139,
+        "reliability": 92,
+        "score": 76.6,
+        "score_breakdown": {
+          "time": 35.0,
+          "distance": 7.4,
+          "congestion": 6.7,
+          "incidents": 15.0,
+          "fuel": 2.5,
+          "reliability": 10.0
+        },
+        "rank": 1,
+        "recommended": true,
+        "explanation": "Recommended: lowest travel time and few incidents.",
+        "closure_warnings": [
+          "BDA Complex Road is closed (incident #103)"
+        ]
+      },
+      {
+        "route_id": "r5",
+        "type": "eco",
+        "label": "Eco (least fuel)",
+        "is_alternative": false,
+        "same_path_as": "r1",
+        "node_ids": [
+          "n5",
+          "n1",
+          "n2",
+          "n3",
+          "n7"
+        ],
+        "edge_ids": [
+          "e4",
+          "e1",
+          "e2",
+          "e9"
+        ],
+        "coords": [
+          [
+            12.9296,
+            77.558
+          ],
+          [
+            12.9303,
+            77.5572
+          ],
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9317,
+            77.558
+          ],
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.9331,
+            77.5616
+          ],
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ],
+        "distance_km": 1.6,
+        "eta_min": 6.1,
+        "eta_s": 367,
+        "congestion_pct": 49,
+        "signals_on_route": 3,
+        "incident_ids": [],
+        "incident_count": 0,
+        "fuel_litres": 0.139,
+        "reliability": 92,
+        "score": 76.6,
+        "score_breakdown": {
+          "time": 35.0,
+          "distance": 7.4,
+          "congestion": 6.7,
+          "incidents": 15.0,
+          "fuel": 2.5,
+          "reliability": 10.0
+        },
+        "rank": 2,
+        "recommended": false,
+        "explanation": "lowest travel time and few incidents.",
+        "closure_warnings": [
+          "BDA Complex Road is closed (incident #103)"
+        ]
+      },
+      {
+        "route_id": "r4",
+        "type": "safest",
+        "label": "Fewest incidents",
+        "is_alternative": true,
+        "same_path_as": null,
+        "node_ids": [
+          "n5",
+          "n1",
+          "n4",
+          "n2",
+          "n3",
+          "n7"
+        ],
+        "edge_ids": [
+          "e4",
+          "e3",
+          "e6",
+          "e2",
+          "e9"
+        ],
+        "coords": [
+          [
+            12.9296,
+            77.558
+          ],
+          [
+            12.9303,
+            77.5572
+          ],
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.9326,
+            77.5572
+          ],
+          [
+            12.9342,
+            77.558
+          ],
+          [
+            12.9332,
+            77.559
+          ],
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.9331,
+            77.5616
+          ],
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ],
+        "distance_km": 1.86,
+        "eta_min": 7.4,
+        "eta_s": 441,
+        "congestion_pct": 47,
+        "signals_on_route": 3,
+        "incident_ids": [],
+        "incident_count": 0,
+        "fuel_litres": 0.161,
+        "reliability": 89,
+        "score": 69.4,
+        "score_breakdown": {
+          "time": 25.9,
+          "distance": 0.8,
+          "congestion": 20.0,
+          "incidents": 15.0,
+          "fuel": 0.4,
+          "reliability": 7.3
+        },
+        "rank": 3,
+        "recommended": false,
+        "explanation": "lowest travel time and light traffic.",
+        "closure_warnings": [
+          "BDA Complex Road is closed (incident #103)"
+        ]
+      },
+      {
+        "route_id": "r3",
+        "type": "least_congested",
+        "label": "Least congested",
+        "is_alternative": true,
+        "same_path_as": null,
+        "node_ids": [
+          "n5",
+          "n1",
+          "n6",
+          "n3",
+          "n7"
+        ],
+        "edge_ids": [
+          "e4",
+          "e5",
+          "e8",
+          "e9"
+        ],
+        "coords": [
+          [
+            12.9296,
+            77.558
+          ],
+          [
+            12.9303,
+            77.5572
+          ],
+          [
+            12.931,
+            77.5562
+          ],
+          [
+            12.933,
+            77.557
+          ],
+          [
+            12.9352,
+            77.5586
+          ],
+          [
+            12.936,
+            77.56
+          ],
+          [
+            12.935,
+            77.5618
+          ],
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ],
+        "distance_km": 1.89,
+        "eta_min": 6.9,
+        "eta_s": 413,
+        "congestion_pct": 49,
+        "signals_on_route": 2,
+        "incident_ids": [],
+        "incident_count": 0,
+        "fuel_litres": 0.165,
+        "reliability": 89,
+        "score": 58.3,
+        "score_breakdown": {
+          "time": 29.4,
+          "distance": 0.0,
+          "congestion": 6.7,
+          "incidents": 15.0,
+          "fuel": 0.0,
+          "reliability": 7.3
+        },
+        "rank": 4,
+        "recommended": false,
+        "explanation": "lowest travel time and few incidents.",
+        "closure_warnings": [
+          "BDA Complex Road is closed (incident #103)"
+        ]
+      },
+      {
+        "route_id": "r2",
+        "type": "shortest",
+        "label": "Shortest",
+        "is_alternative": false,
+        "same_path_as": null,
+        "node_ids": [
+          "n5",
+          "n2",
+          "n3",
+          "n7"
+        ],
+        "edge_ids": [
+          "e7",
+          "e2",
+          "e9"
+        ],
+        "coords": [
+          [
+            12.9296,
+            77.558
+          ],
+          [
+            12.931,
+            77.559
+          ],
+          [
+            12.9324,
+            77.5598
+          ],
+          [
+            12.9331,
+            77.5616
+          ],
+          [
+            12.9338,
+            77.5634
+          ],
+          [
+            12.9354,
+            77.5652
+          ],
+          [
+            12.9368,
+            77.567
+          ]
+        ],
+        "distance_km": 1.3,
+        "eta_min": 10.9,
+        "eta_s": 653,
+        "congestion_pct": 50,
+        "signals_on_route": 2,
+        "incident_ids": [
+          101
+        ],
+        "incident_count": 1,
+        "fuel_litres": 0.114,
+        "reliability": 81,
+        "score": 20.0,
+        "score_breakdown": {
+          "time": 0.0,
+          "distance": 15.0,
+          "congestion": 0.0,
+          "incidents": 0.0,
+          "fuel": 5.0,
+          "reliability": 0.0
+        },
+        "rank": 5,
+        "recommended": false,
+        "explanation": "short distance and low fuel use.",
+        "closure_warnings": [
+          "BDA Complex Road is closed (incident #103)"
+        ]
+      }
+    ]
+  },
+  "error": null
+}
