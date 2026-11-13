@@ -18,3 +18,13 @@ node_modules/
 # OS / editor
 .DS_Store
 Thumbs.db
+
+# Agent / assistant tooling (never committed)
+.claude/
+.opencode/
+.cursor/
+.windsurf/
+.agents/
+AGENTS.md
+agent-memory/
+memories/
