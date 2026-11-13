@@ -1,9 +1,9 @@
-"""Generate data/traffic.csv — 6 weeks of 15-minute speeds for PRIMARY segments.
+"""Generate data/traffic.csv — 6 weeks of 15-minute speeds.
 
-Primary-only is deliberate: the full graph has 4,797 edges; all primary +
-secondary + tertiary (1,083 segments) would be ~4.4M rows (~230 MB), over
-GitHub's 100 MB file limit. The contract allows main-roads-only datasets, as
-long as every covered segment has complete rows (no gaps).
+Coverage: all PRIMARY segments (147) + every approach edge of the 10 signalised
+junctions (secondary/tertiary/residential, 41 more → 188 segments, ~40 MB,
+under GitHub's 100 MB file limit). Approach coverage is required by the signal
+optimizer, which must derive queues/arrival rates from this file (contract §4.4).
 
 Window: 2026-10-05T00:00:00Z .. 2026-11-15T23:45:00Z (42 days, 4032 steps).
 Week 6 (2026-11-09..15) is reserved as the model's test week.
@@ -14,7 +14,7 @@ Model (seeded, reproducible):
                 mild midday dip); weekends get 40% of the dips
   rain: ~6 random rain days (15% chance per day), each raining for 2-6 h in one
         window; rain knocks speeds to 0.78x
-  incidents: on ~35% of days, 1-2 incidents on random primary segments,
+  incidents: on ~60% of days, 1-3 incidents on random primary segments,
              1-4 steps each; speeds drop to 45-70%
   noise: N(0, 0.045)
 Every row: source=SIMULATED; timestamps UTC on :00/:15/:30/:45.
@@ -22,10 +22,14 @@ Every row: source=SIMULATED; timestamps UTC on :00/:15/:30/:45.
 import csv
 import json
 import math
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.graph_utils import approaches_into, load_graph, signalised_node_ids
 
 ROOT = Path(__file__).resolve().parents[2]
 GRAPH = ROOT / "data" / "graph.json"
@@ -72,10 +76,15 @@ def steps():
 
 def main() -> None:
     rng = np.random.default_rng(SEED)
-    graph = json.loads(GRAPH.read_text(encoding="utf-8"))
+    graph = load_graph()
     edges = {e["id"]: e for e in graph["edges"]}
     primary = [e for e in graph["edges"] if e["road_type"] == "primary"]
-    print(f"generating traffic for {len(primary)} primary segments x {len(list(steps()))} steps")
+    approach_ids = {ap["edge_id"] for node in signalised_node_ids(graph)
+                    for ap in approaches_into(graph, node)}
+    covered = [e for e in primary] + [e for e in graph["edges"]
+                                      if e["id"] in approach_ids and e["road_type"] != "primary"]
+    print(f"covered segments: {len(covered)} "
+          f"({len(primary)} primary + {len(covered) - len(primary)} signal-approach non-primary)")
 
     # seeded rain schedule: pick rain days, each gets one window
     days = [START + timedelta(days=i) for i in range(42)]
@@ -102,7 +111,6 @@ def main() -> None:
     print(f"incident events: {sum(len(v) for v in incidents.values())}")
 
     day_steps = list(steps())
-    seg_noise = {e["id"]: 1.0 for e in primary}
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     rows = 0
@@ -122,7 +130,7 @@ def main() -> None:
             rain_window = rain_schedule.get(date)
             raining = int(rain_window is not None and rain_window[0] <= h_ist < rain_window[1])
 
-            for seg_id, free_flow in ((e["id"], e["free_flow_kmph"]) for e in primary):
+            for seg_id, free_flow in ((e["id"], e["free_flow_kmph"]) for e in covered):
                 incident_factor, incident_flag = 1.0, 0
                 for start_utc, dur, factor in incidents.get((date, seg_id), []):
                     if start_utc <= h_utc < start_utc + dur * 0.25:

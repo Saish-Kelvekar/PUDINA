@@ -18,7 +18,11 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+import sys
 from sklearn.ensemble import RandomForestRegressor
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.graph_utils import approaches_into, load_graph, signalised_node_ids
 
 ROOT = Path(__file__).resolve().parents[2]
 CSV = ROOT / "data" / "traffic.csv"
@@ -44,17 +48,21 @@ def main() -> None:
     df = pd.read_csv(CSV, parse_dates=["timestamp_utc"])
     df = df.sort_values(["segment_id", "timestamp_utc"]).reset_index(drop=True)
 
-    graph = json.loads(GRAPH.read_text(encoding="utf-8"))
+    graph = load_graph()
     edges = {e["id"]: e for e in graph["edges"]}
     primary = [e for e in graph["edges"] if e["road_type"] == "primary"]
-    lanes = {e["id"]: e["lanes"] for e in primary}
+    approach_ids = {ap["edge_id"] for node in signalised_node_ids(graph)
+                    for ap in approaches_into(graph, node)}
+    covered = [e for e in primary] + [e for e in graph["edges"]
+                                      if e["id"] in approach_ids and e["road_type"] != "primary"]
+    lanes = {e["id"]: e["lanes"] for e in covered}
 
-    # neighbour map: primary edges sharing a node
-    neighbours = {e["id"]: {o["id"] for o in primary
+    # neighbour map: covered edges sharing a node
+    neighbours = {e["id"]: {o["id"] for o in covered
                             if o["id"] != e["id"]
                             and ({e["from"], e["to"]} & {o["from"], o["to"]})}
-                  for e in primary}
-    print(f"primary segments: {len(primary)}, avg neighbours {np.mean([len(v) for v in neighbours.values()]):.2f}")
+                  for e in covered}
+    print(f"covered segments: {len(covered)}, avg neighbours {np.mean([len(v) for v in neighbours.values()]):.2f}")
 
     # neighbour speed per step (all primary edges are covered)
     pivot = df.pivot(index="timestamp_utc", columns="segment_id", values="speed_kmph")

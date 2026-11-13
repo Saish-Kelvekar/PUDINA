@@ -80,6 +80,16 @@ road_types = {e["road_type"] for e in edges.values()}
 check(road_types <= {"primary", "secondary", "tertiary", "residential"},
       f"road_type values in contract classes: {sorted(road_types)}", "unknown road_type")
 
+sys_path = str(Path(__file__).resolve().parents[1])
+import sys
+sys.path.insert(0, sys_path)
+from app.graph_utils import signalised_node_ids, approaches_into
+
+primary = {e["id"]: e for e in edges.values() if e["road_type"] == "primary"}
+approach_ids = {ap["edge_id"] for node in signalised_node_ids(graph)
+                for ap in approaches_into(graph, node)}
+covered = set(primary) | approach_ids
+
 print("== data/traffic.csv (real) ==")
 with open(ROOT / "data" / "traffic.csv", newline="", encoding="utf-8") as f:
     reader = csv.DictReader(f)
@@ -88,14 +98,14 @@ with open(ROOT / "data" / "traffic.csv", newline="", encoding="utf-8") as f:
           "header matches contract order", f"bad header: {reader.fieldnames}")
     rows = list(reader)
 
-primary = {e["id"]: e for e in edges.values() if e["road_type"] == "primary"}
-check(len(rows) == 147 * 4032, f"{len(rows)} rows (147 segments x 4032)",
+check(len(rows) == 188 * 4032, f"{len(rows)} rows (188 segments x 4032)",
       f"unexpected row count {len(rows)}")
-print(f"  info: {len(rows)} rows, {len(primary)} primary segments")
+print(f"  info: {len(rows)} rows, {len(primary)} primary + {len(approach_ids - set(primary))} approach segments")
 
 seg_ids = {r["segment_id"] for r in rows}
-check(seg_ids == set(primary), "all primary segments covered, nothing else", "segment set mismatch")
-check(all(r["free_flow_kmph"] == str(primary[r["segment_id"]]["free_flow_kmph"]) for r in rows),
+check(seg_ids == covered, "all covered segments present (primary + signal approaches)",
+      "segment set mismatch")
+check(all(r["free_flow_kmph"] == str(edges[r["segment_id"]]["free_flow_kmph"]) for r in rows),
       "free_flow_kmph matches graph for all rows", "free_flow mismatch")
 check(all(r["source"] == "SIMULATED" for r in rows), "source always SIMULATED", "source mismatch")
 check(all(r["rain"] in "01" and r["incident"] in "01" for r in rows), "rain/incident are 0 or 1",

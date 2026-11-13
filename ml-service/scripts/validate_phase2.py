@@ -44,7 +44,7 @@ for horizon, h in metrics["horizons"].items():
           f"horizon {horizon}: model does not beat baseline")
     check(0 < h["improvement_pct"] < 100, f"horizon {horizon}: improvement_pct sane", "improvement_pct out of range")
     check(0.5 <= h["level_accuracy_model"] <= 1.0, f"horizon {horizon}: level accuracy sane", "accuracy odd")
-    check(h["test_rows"] == 98490, f"horizon {horizon}: test_rows = 98,490 (week 6)", "test_rows mismatch")
+    check(h["test_rows"] == 125960, f"horizon {horizon}: test_rows = 125,960 (week 6)", "test_rows mismatch")
 
 print("== models (gitignored) ==")
 for horizon, name in [("15", "rf_15"), ("30", "rf_30")]:

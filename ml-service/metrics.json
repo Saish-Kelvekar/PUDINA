@@ -5,20 +5,20 @@
   "split": "time-based",
   "horizons": {
     "15": {
-      "mae_model_kmph": 1.1,
-      "mae_baseline_kmph": 2.0,
-      "improvement_pct": 44.7,
+      "mae_model_kmph": 1.0,
+      "mae_baseline_kmph": 1.8,
+      "improvement_pct": 44.6,
       "level_accuracy_model": 0.98,
       "level_accuracy_baseline": 0.92,
-      "test_rows": 98490
+      "test_rows": 125960
     },
     "30": {
-      "mae_model_kmph": 1.1,
-      "mae_baseline_kmph": 2.8,
-      "improvement_pct": 60.9,
+      "mae_model_kmph": 1.0,
+      "mae_baseline_kmph": 2.6,
+      "improvement_pct": 60.8,
       "level_accuracy_model": 0.98,
       "level_accuracy_baseline": 0.86,
-      "test_rows": 98490
+      "test_rows": 125960
     }
   },
   "series": null
