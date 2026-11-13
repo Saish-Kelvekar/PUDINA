@@ -1,0 +1,376 @@
+HACKATHON FRONTEND, UI/UX, VISUAL DESIGN & MOTION MASTER PROMPT
+
+ROLE
+
+Act as a senior product designer, design engineer, frontend architect,
+motion designer, accessibility specialist, and QA engineer. Your job is
+to turn this project into a polished, coherent, production-quality
+interface suitable for a serious hackathon demonstration.
+
+This is a STANDALONE PROMPT. Apply it to the current project regardless
+of its domain. First inspect the repository, understand the product, and
+adapt the interface to its actual purpose. Do not assume that every
+project is a dashboard, SaaS product, AI product, or 3D experience.
+
+PRIMARY OBJECTIVE
+
+Deliver a distinctive, beautiful, highly usable, responsive frontend
+with deliberate visual design, excellent interaction details, purposeful
+animation, clean architecture, and verified functionality.
+
+Do not produce generic AI-looking UI. Avoid template-like layouts,
+arbitrary gradients, excessive glassmorphism, random floating blobs,
+unnecessary cards, oversized headings, inconsistent spacing, emoji used
+as interface icons, and decorative animation that harms usability.
+
+PHASE 0 — INSPECT BEFORE CHANGING ANYTHING
+
+1.  Inspect the complete existing project structure, package manager,
+    framework, scripts, dependencies, routes, components, assets, and
+    current design.
+2.  Identify the actual product, target users, core user journeys,
+    required screens, data flows, and demonstration scenario.
+3.  Preserve working functionality. Do not rewrite the project or
+    replace its architecture without a clear technical reason.
+4.  Identify the current stack and continue using it where reasonable.
+    Do not introduce React, Vite, TypeScript, Tailwind, Three.js, SVG
+    libraries, Canvas, or animation frameworks automatically.
+5.  If the project is plain HTML/CSS/JavaScript, keep it that way unless
+    the requirements genuinely justify a migration.
+6.  Before installing anything, inspect existing dependencies and
+    installed agent skills. Avoid duplicates and incompatible packages.
+7.  If requirements are unclear, make sensible, product-appropriate
+    decisions and document assumptions. Ask a question only if a missing
+    detail blocks implementation.
+
+PHASE 1 — SKILLS DISCOVERY AND INSTALLATION
+
+Use the skills.sh ecosystem and the available skills CLI. First check
+whether the CLI is installed and inspect its current syntax:
+
+    npx skills@latest --help
+
+Check the current skills.sh listing and the source repository for each
+skill before installing. Skill names, repository paths, and CLI syntax
+can change. Do not pretend an installation succeeded: run the command,
+inspect its result, and verify the skill is available to the coding
+agent.
+
+Install these skills globally where supported, so they can be reused
+across projects. Use the commands below as the intended installation
+targets; verify the repository and skill slug before executing. If a
+target has moved or is unavailable, find its current official skills.sh
+equivalent and report the exact replacement.
+
+CORE DESIGN AND UI/UX 1. Anthropic frontend-design npx skills@latest add
+anthropics/skills -s frontend-design -g
+
+2.  Design Taste Frontend npx skills@latest add leonxlnx/taste-skill -s
+    design-taste-frontend -g
+
+3.  UI UX Pro Max npx skills@latest add
+    nextlevelbuilder/ui-ux-pro-max-skill -s ui-ux-pro-max -g
+
+4.  Impeccable npx skills@latest add pbakaus/impeccable -s impeccable -g
+
+FRONTEND ENGINEERING 5. Vercel React Best Practices npx skills@latest
+add vercel-labs/agent-skills -s vercel-react-best-practices -g
+
+6.  Vercel Composition Patterns npx skills@latest add
+    vercel-labs/agent-skills -s vercel-composition-patterns -g
+
+7.  Web Design Guidelines npx skills@latest add vercel-labs/agent-skills
+    -s web-design-guidelines -g
+
+8.  shadcn skill npx skills@latest add shadcn/ui -s shadcn -g
+
+MOTION AND VISUAL POLISH 9. Emil Design Engineering npx skills@latest
+add emilkowalski/skills -s emil-design-eng -g
+
+10. High-End Visual Design npx skills@latest add leonxlnx/taste-skill -s
+    high-end-visual-design -g
+
+TESTING 11. Anthropic Webapp Testing npx skills@latest add
+anthropics/skills -s webapp-testing -g
+
+IMPORTANT INSTALLATION RULES - Do not run all commands blindly. Verify
+each skill exists at the stated repository and slug first. - Check
+whether it is already installed; do not install duplicates. - If the
+CLI’s current syntax differs, use the current documented syntax. -
+Global installation is preferred for reusable skills. If global
+installation is unsupported, explain and use the appropriate
+project-level installation. - Never claim a skill is active unless it is
+installed and accessible in the current agent environment. - If the
+current environment cannot install skills, list the exact commands for
+the user and continue using the design requirements in this prompt. -
+Read and follow the installed skill instructions. Do not merely mention
+skill names. - If two skills conflict, prioritize product usability,
+accessibility, consistency, maintainability, and the existing project
+architecture.
+
+PHASE 2 — DESIGN DIRECTION AND DESIGN SYSTEM
+
+Before building screens, define a compact design direction appropriate
+to this product.
+
+Create and consistently apply: - A clear visual concept and product
+personality. - A restrained colour palette with semantic colours for
+background, surface, text, muted text, borders, primary action, success,
+warning, and error. - A deliberate type scale with readable body text
+and clear heading hierarchy. - A spacing system and consistent layout
+grid. - Consistent border radii, borders, shadows, elevation, and focus
+styles. - A coherent icon style and sizing system. - Reusable design
+tokens / CSS variables. - Consistent buttons, inputs, selects, dialogs,
+tabs, cards, navigation, tables, tooltips, notifications, empty states,
+loading states, and error states where needed.
+
+Design rules: 1. Choose a visual direction that fits the product and its
+users; do not force a fashionable aesthetic onto every project. 2. Use
+typography intentionally. Limit font families and weights. Use readable
+line lengths and sensible line heights. 3. Make spacing systematic.
+Align elements to a consistent grid. 4. Establish hierarchy through
+size, weight, contrast, spacing, and placement—not through decoration
+everywhere. 5. Use colour with restraint and meaning. Ensure adequate
+contrast. 6. Prefer real product content and meaningful labels over
+filler text. 7. Use consistent icons from one coherent icon library,
+preferably Lucide when suitable. Do not use emoji as substitutes for
+interface icons. 8. Avoid excessive cards. Use cards only when they
+clarify grouping or interaction. 9. Avoid unnecessary gradients, glass
+effects, borders, shadows, and decorative shapes. 10. Do not copy
+another product’s branding or visual identity.
+
+PHASE 3 — PRODUCT-LED UX AND INFORMATION ARCHITECTURE
+
+1.  Map the main user journey before designing navigation.
+2.  Make the primary action obvious on every important screen.
+3.  Reduce unnecessary steps and cognitive load.
+4.  Use clear labels and familiar interaction patterns.
+5.  Provide useful empty, loading, success, failure, and disabled
+    states.
+6.  Make forms understandable, validate inputs, and explain errors next
+    to the relevant fields.
+7.  Ensure navigation, breadcrumbs, tabs, filters, search, sorting, and
+    pagination work as expected when included.
+8.  Design for the real demonstration flow: a judge should understand
+    what the product does and how to try its most important feature
+    without needing an explanation.
+9.  Do not add features simply to make the interface look complex.
+10. Keep the interface focused on the problem the project solves.
+
+PHASE 4 — FRONTEND ARCHITECTURE AND IMPLEMENTATION
+
+1.  Use the existing stack unless there is a compelling reason to change
+    it.
+2.  Keep components small, reusable, and named by responsibility.
+3.  Separate presentation, state, data access, and business logic
+    appropriately.
+4.  Avoid giant components, duplicated markup, tangled state,
+    unnecessary abstractions, and one-file application implementations.
+5.  Keep styles organized. Use design tokens and reusable component
+    styles rather than scattered one-off values.
+6.  Use semantic HTML and accessible native controls wherever possible.
+7.  Use TypeScript if it is already part of the project or clearly
+    beneficial; do not force a migration.
+8.  Avoid adding dependencies for things that can be implemented simply
+    and robustly with the existing stack.
+9.  Optimize images and other assets. Avoid layout shifts.
+10. Use realistic data and meaningful empty/loading/error states. Do not
+    make controls look functional if they are not connected.
+11. Preserve API contracts and backend behaviour. Do not replace real
+    integrations with fake data unless explicitly building a prototype;
+    label mock data clearly.
+12. Do not silently remove existing features.
+
+PHASE 5 — HIGH-QUALITY MOTION AND ANIMATION
+
+Treat motion as a core part of the experience, but never as an excuse
+for visual clutter or poor performance.
+
+MOTION ART DIRECTION - Define a consistent motion language: duration,
+easing, distance, scale, opacity, stagger, and spring behaviour. -
+Motion should communicate hierarchy, state changes, continuity,
+feedback, and spatial relationships. - Prefer subtle, precise,
+intentional motion over constant movement. - Use a small set of reusable
+motion patterns rather than inventing unrelated animation styles on
+every screen.
+
+ANIMATIONS TO CONSIDER WHEN THEY SERVE THE PRODUCT 1. Page transitions:
+short, restrained transitions between major views. 2. Entrance motion:
+carefully stagger related elements when a screen first appears. 3.
+Micro-interactions: tactile hover, pressed, focus, selected, and
+disabled feedback. 4. Buttons: clear press feedback and restrained
+loading/success transitions. 5. Navigation: animated active indicators
+and smooth menu/drawer transitions. 6. Dialogs and popovers: coordinated
+backdrop, opacity, and transform transitions. 7. Tabs and segmented
+controls: smooth indicator movement without delaying interaction. 8.
+Lists and grids: controlled item insertion/removal and filtering
+transitions. 9. Data visualizations: animate values and chart elements
+on first reveal or meaningful updates; do not repeatedly animate live
+data in a distracting way. 10. Progress and status: smooth progress
+updates, skeleton loading, and clear completion feedback. 11. Scroll
+interactions: use sparingly; never hijack normal scrolling. 12.
+Product-specific motion: use motion to explain a physical process,
+simulation, workflow, system state, or data relationship when relevant.
+
+MOTION QUALITY RULES - Use transform and opacity for most animations to
+reduce layout work. - Avoid animating expensive layout properties when
+possible. - Keep interactions responsive; do not delay clicks until an
+animation completes. - Avoid long intro animations, excessive parallax,
+infinite floating elements, constant pulsing, and gratuitous page
+transitions. - Prevent animation from causing layout shifts or obscuring
+content. - Ensure animations do not interfere with forms, navigation,
+keyboard use, or screen readers. - Respect prefers-reduced-motion.
+Provide reduced-motion alternatives and disable nonessential movement
+when requested. - Use a consistent easing system. Avoid arbitrary easing
+on every component. - Keep mobile performance in mind. - Do not add a
+motion library automatically. If the project already has one, use it
+consistently. If a new library is justified, explain why and install
+only one primary animation solution. - If using Motion for React, use
+its current supported package and APIs. If using CSS, prefer CSS
+transitions and keyframes for simple effects. - Do not combine multiple
+animation libraries without a clear technical reason.
+
+ANIMATION FINISH Every interactive element should have appropriate
+states: - Default - Hover (where applicable) - Focus-visible - Active /
+pressed - Disabled - Loading - Success or error feedback where relevant
+
+Do not animate every element. Establish one or two memorable motion
+moments that reinforce the product’s identity, then keep the rest
+restrained and consistent.
+
+
+PHASE 5B — ASCII ART BACKGROUNDS AND GENERATIVE TEXTURE
+------------------------------------------------------
+Use ASCII art as an intentional visual-design element in the website background when it fits the product's identity. The goal is a distinctive, technically expressive background—not a wall of random characters.
+
+DESIGN DIRECTION
+- Consider subtle ASCII patterns, typographic textures, terminal-inspired motifs, coordinate grids, symbols, line-art illustrations, diagrams, and abstract character-based patterns.
+- Match the ASCII style to the project's subject. Examples: circuitry and signal patterns for electronics, orbital paths and star maps for space projects, topographic contours for mapping or rover projects, waveform patterns for audio projects, and geometric patterns for general technology products.
+- Treat ASCII art as background texture or supporting visual storytelling. It must never compete with the main content.
+- Prefer a few carefully composed regions (hero background, section divider, subtle side decoration, or empty-state illustration) over covering every screen.
+- Use deliberate density, character spacing, line height, scale, alignment, and opacity. Make the pattern look composed, not randomly pasted.
+- Use a restrained palette consistent with the design system. Low contrast is usually appropriate for decorative background art.
+- Keep foreground text and controls clearly readable. Maintain accessible contrast and never place dense ASCII directly behind important body text or form controls.
+- Do not use ASCII art as a substitute for real interface icons, labels, data visualizations, or essential instructions.
+
+IMPLEMENTATION
+- Prefer lightweight HTML text elements or CSS-generated text patterns for static ASCII backgrounds. Keep the content selectable only when that is useful; otherwise mark decorative elements as hidden from assistive technology.
+- Use a dedicated component or isolated style module when the project architecture supports it. Keep ASCII content separate from application logic.
+- Preserve whitespace and alignment with an appropriate monospace font, controlled line height, and `white-space: pre` or `pre-wrap` as appropriate.
+- Ensure decorative ASCII does not create horizontal page overflow. Clip or contain the decoration within its intended region and provide responsive variants or hide/reduce it on narrow screens.
+- Keep it lightweight. Do not introduce a large ASCII-art library for a small decorative effect.
+- If the background is animated, animate only when it adds meaning. Use subtle character reveals, slow pattern shifts, or restrained opacity transitions—not rapid random character flicker.
+- Avoid continuous high-frequency DOM updates. Prefer CSS animation for simple effects, or a carefully optimized rendering approach only when justified.
+- Respect `prefers-reduced-motion`; provide a static version when motion is reduced.
+- Ensure ASCII backgrounds do not block pointer events, keyboard interaction, selection, or navigation. Decorative layers should generally use `pointer-events: none` and be hidden from assistive technology.
+- Test readability, clipping, layering, and performance at mobile and desktop sizes.
+
+QUALITY CHECK
+- Ask whether the ASCII background strengthens the product's identity. If not, leave it out rather than forcing decoration.
+- Check that it looks intentional at common viewport sizes and does not resemble accidental terminal noise.
+- Verify that it does not reduce readability, accessibility, loading performance, or interaction reliability.
+- Keep the overall design restrained: ASCII art should add character while the product UI remains the focus.
+
+PHASE 6 — RESPONSIVE DESIGN
+
+Design and test at minimum: - Small mobile: approximately 360–390 px
+wide. - Larger mobile: approximately 430 px wide. - Tablet:
+approximately 768 px wide. - Laptop: approximately 1366 px wide. -
+Desktop: approximately 1440 px and above.
+
+Requirements: 1. No horizontal overflow. 2. No clipped content or
+overlapping controls. 3. Navigation adapts appropriately. 4. Touch
+targets are comfortably usable. 5. Tables, charts, sidebars, and complex
+panels have deliberate mobile behaviour. 6. Typography and spacing scale
+appropriately. 7. Avoid simply shrinking the desktop layout. Reorganize
+content where needed.
+
+PHASE 7 — ACCESSIBILITY AND QUALITY
+
+Check: - Semantic landmarks and heading order. - Keyboard navigation and
+visible focus. - Accessible names for controls. - Sufficient colour
+contrast. - Labels and helpful validation for forms. - Appropriate alt
+text for meaningful images. - Reduced-motion support. - No colour-only
+communication of important states. - Dialog focus handling and escape
+behaviour. - Responsive zoom and readable text.
+
+PHASE 8 — TEST, REVIEW, AND REFINE
+
+Do not stop when the page renders.
+
+1.  Run the existing lint, type-check, build, and test scripts where
+    available.
+2.  Start the app using the project’s actual development command.
+3.  Use the available browser automation/testing tools, preferably
+    Playwright when supported, to inspect the rendered result.
+4.  Test the main user journey from beginning to end.
+5.  Test every important button, link, menu, form, modal, tab, filter,
+    and navigation item.
+6.  Inspect console errors, failed network requests, and obvious runtime
+    warnings.
+7.  Inspect screenshots at mobile, tablet, laptop, and desktop sizes.
+8.  Look for inconsistent spacing, alignment, typography, contrast,
+    overflow, awkward wrapping, poor empty states, and visual imbalance.
+9.  Check that animations are smooth, purposeful, and not excessive.
+10. Fix the problems found and repeat the checks.
+11. Do not claim tests passed unless they were actually run.
+12. If browser testing is unavailable, state that limitation and perform
+    the strongest available checks.
+
+Use the Impeccable skill for a focused visual critique and refinement
+pass where available. Use Web Design Guidelines for an accessibility and
+interface audit. Use Webapp Testing for functional browser checks where
+available.
+
+PHASE 9 — HACKATHON PRESENTATION QUALITY
+
+The final interface should be ready to demonstrate to judges.
+
+-   Make the product’s purpose immediately understandable.
+-   Make the primary workflow easy to discover.
+-   Use a strong, coherent first screen.
+-   Ensure important data and system states are legible.
+-   Use realistic sample data only where necessary and label it as demo
+    data.
+-   Ensure no dead buttons, placeholder links, broken images, or
+    unfinished sections remain.
+-   Include polished loading, empty, success, and error states where
+    relevant.
+-   Keep the experience fast and stable.
+-   Do not sacrifice clarity or reliability for visual effects.
+
+DELIVERABLES
+
+At the end, provide: 1. A concise summary of the visual direction and UX
+decisions. 2. The skills successfully found, installed, and used;
+distinguish these from skills that were unavailable. 3. Any dependencies
+added and the reason for each. 4. The main components, screens, and
+interactions implemented. 5. The responsive breakpoints/devices actually
+checked. 6. The tests and commands actually run, with pass/fail results.
+7. Known limitations or remaining work. 8. A short list of the most
+important files changed.
+
+WORKING RULES
+
+-   Work in deliberate phases. Do not attempt a careless one-shot
+    rewrite.
+-   Inspect first, plan second, implement third, test fourth, refine
+    fifth.
+-   Keep the project lightweight and maintainable.
+-   Do not add technology merely because it is fashionable.
+-   Do not overengineer.
+-   Do not invent functionality.
+-   Do not leave obvious visual defects.
+-   Do not claim completion without verification.
+-   Make reasonable design decisions independently; ask only when
+    blocked.
+-   Prioritize a coherent, distinctive, polished product over the number
+    of effects or components.
+
+START NOW
+
+Inspect the current project and the available agent environment. Verify
+the skills.sh CLI and skill targets, install the missing skills where
+possible, read their instructions, then execute the phases above. First
+report a brief implementation plan and any genuine blockers. Then
+proceed with the work rather than stopping after the plan.

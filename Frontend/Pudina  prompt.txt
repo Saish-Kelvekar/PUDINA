@@ -1,0 +1,2286 @@
+# TRAFFICVISION AI
+## Product Requirements Document (PRD) + Master Development Prompt
+
+**Project:** Intelligent Traffic Management and Route Optimization System  
+**Hackathon Problem Statement:** PS-01  
+**Domain:** Full Stack Web Development  
+**Product Type:** AI-powered traffic intelligence, route optimization, camera monitoring and incident reporting platform  
+**Primary Interface:** Responsive web application  
+**Additional Interface:** Telegram Bot  
+**AI Provider:** NVIDIA API Catalog / NVIDIA NIM — exact model to be selected later  
+**Project Status:** Development specification
+
+---
+
+# PART 1 — PRODUCT REQUIREMENTS DOCUMENT (PRD)
+
+## 1. Product Overview
+
+TrafficVision AI is an intelligent traffic management and route optimization platform designed to help commuters, administrators and emergency services understand road conditions, identify traffic incidents, predict congestion and select optimized routes.
+
+The platform combines:
+
+- Interactive map-based navigation.
+- Live traffic information from available traffic providers.
+- AI-based traffic congestion prediction.
+- Community-driven incident reporting.
+- Intelligent incident verification and network-impact analysis.
+- Adaptive traffic signal simulation.
+- Emergency vehicle priority routing.
+- Multi-factor route optimization.
+- Authorized road-camera monitoring.
+- Laptop webcam demonstration mode.
+- AI-powered image and video analysis through a configurable NVIDIA API integration.
+- Telegram bot integration for camera access, alerts, images, videos and AI analysis.
+
+The platform must function as a coherent working application, not a collection of disconnected UI screens.
+
+## 2. Primary Objectives
+
+1. Help users compare available routes between two locations.
+2. Calculate shortest and fastest routes.
+3. Display distance, ETA, congestion and incident information.
+4. Predict congestion 15–30 minutes ahead.
+5. Detect duplicate and potentially false incident reports.
+6. Analyze how road incidents affect connected road segments.
+7. Simulate optimized traffic signal timings.
+8. Calculate priority routes for emergency vehicles.
+9. Allow users to inspect authorized traffic cameras.
+10. Allow users to capture images and videos using their laptop camera.
+11. Deliver camera media and AI analysis through the website and Telegram.
+12. Provide administrators with tools to monitor and manage the traffic network.
+
+## 3. Target Users and Roles
+
+### A. General User / Commuter
+
+- Search for locations.
+- Select source and destination.
+- Compare available routes.
+- View traffic conditions.
+- Report incidents.
+- Inspect available cameras.
+- Request snapshots and camera clips.
+- Receive traffic alerts.
+- Connect a Telegram account.
+
+### B. Administrator
+
+- Monitor traffic conditions.
+- Review incident reports.
+- Approve, reject or merge reports.
+- Manage camera registrations.
+- Inspect traffic predictions.
+- Monitor AI analysis jobs.
+- Review road closures and diversions.
+- Access traffic analytics.
+
+### C. Emergency Services / Emergency Demonstration Role
+
+- Select emergency vehicle type.
+- Enter an emergency destination.
+- Calculate priority routes.
+- View predicted congestion.
+- Simulate priority passage through traffic signals.
+- Compare emergency and normal route ETAs.
+- View estimated time saved.
+
+This is a simulation and decision-support feature, not a real emergency dispatch or traffic-control system.
+
+---
+
+# 4. FUNCTIONAL REQUIREMENTS
+
+## MODULE 1 — Interactive Traffic Map
+
+### Required features
+
+- Interactive, responsive map.
+- Map zooming, panning and location selection.
+- Source and destination markers.
+- Search for places and addresses.
+- Display road networks and junctions.
+- Display route polylines.
+- Display incident markers.
+- Display available camera markers.
+- Display traffic congestion overlays.
+- Display predicted congestion overlays.
+- Show selected road or junction details.
+
+### Map technology
+
+- OpenStreetMap for base geographic data.
+- MapLibre GL JS for map rendering.
+- Suitable tile provider or properly configured self-hosted tiles.
+- Geocoding provider behind a configurable service interface.
+
+Do not treat OpenStreetMap as a live traffic data provider.
+
+### Traffic layer legend
+
+Use consistent visual meanings:
+
+- Green: flowing traffic.
+- Yellow: moderate traffic.
+- Orange: heavy traffic.
+- Red: severe congestion.
+- Grey: unavailable or unverified traffic information.
+- Blue: selected route.
+- Purple: predicted congestion.
+- Red incident marker: reported or verified incident, with its verification status clearly indicated.
+
+Provide a legend that explains every map layer.
+
+### Data provenance
+
+Every traffic layer must identify its source:
+
+- External live traffic API.
+- Authorized camera observation.
+- User-reported incident.
+- Historical data.
+- Simulated data.
+- AI-generated prediction.
+
+Never display simulated information as verified live traffic.
+
+## MODULE 2 — Traffic Data Integration
+
+### Preferred data architecture
+
+**Base map:** OpenStreetMap  
+**Map renderer:** MapLibre GL JS  
+**Live traffic provider:** TomTom Traffic API, subject to available free quota and account terms  
+**Alternative providers:** Configurable provider adapter  
+**Routing network:** OpenStreetMap road graph  
+**Routing engine:** Dijkstra / A* or OSRM where appropriate
+
+### Required traffic information
+
+Where supported by the selected provider:
+
+- Current road speed.
+- Free-flow road speed.
+- Congestion level.
+- Traffic incidents.
+- Road closures.
+- Road restrictions.
+- Incident locations.
+- Incident timestamps.
+- Traffic flow measurements.
+
+### Integration rules
+
+1. Keep external API keys on the backend.
+2. Never expose secret API keys in browser code.
+3. Cache traffic responses according to provider terms.
+4. Handle API timeouts and quota exhaustion.
+5. Show the last successful update timestamp.
+6. Show a clear unavailable state if the provider fails.
+7. Do not fabricate traffic measurements when an API returns no data.
+8. Keep the provider replaceable without rewriting the frontend.
+
+If no live traffic provider is configured, demonstrate the map with clearly labelled simulated traffic data.
+
+## MODULE 3 — Route Search and Optimization
+
+### User inputs
+
+- Source location.
+- Destination location.
+- Optional route preferences.
+- Optional vehicle type.
+- Optional route avoidance preferences.
+
+### Route options
+
+The platform must calculate and compare:
+
+1. Shortest route.
+2. Fastest route.
+3. Lowest-congestion route.
+4. Most reliable route.
+5. Recommended balanced route.
+
+### Required route information
+
+For each option:
+
+- Total distance.
+- Estimated travel time.
+- Current congestion.
+- Number of reported incidents.
+- Road closure warnings.
+- Estimated fuel consumption.
+- Route reliability score.
+- Important route segments.
+- Last traffic data update.
+
+### Multi-factor route scoring
+
+Implement a configurable weighted scoring system.
+
+Possible factors:
+
+- Distance.
+- Estimated travel time.
+- Congestion.
+- Road closures.
+- Incident severity.
+- Estimated fuel consumption.
+- Route reliability.
+
+Normalize the factors before combining them. Do not add kilometres, minutes and percentages directly.
+
+The system should support configurable weights and a user preference interface.
+
+Example:
+
+- Time-sensitive journey: higher ETA weight.
+- Fuel-efficient journey: higher fuel-consumption weight.
+- Reliability-focused journey: higher reliability weight.
+
+Explain why the recommended route was selected.
+
+Display alternative routes rather than silently selecting one.
+
+### Routing algorithms
+
+Use Dijkstra or A* for graph-based routing.
+
+The road graph should represent:
+
+- Road nodes.
+- Road segments.
+- Segment lengths.
+- Direction restrictions.
+- Road connectivity.
+- Road closure status.
+- Traffic-dependent edge costs.
+
+For dynamic routing, update edge weights when new traffic or incident data becomes available.
+
+OSRM may be used as an additional routing service, but do not assume it automatically accounts for live traffic.
+
+## MODULE 4 — User Incident Reporting
+
+Users must be able to report:
+
+- Accidents.
+- Roadblocks.
+- Traffic congestion.
+- Vehicle breakdowns.
+- Road construction.
+- Flooding or waterlogging.
+- Other road obstructions.
+
+### Incident submission fields
+
+- Incident category.
+- Location.
+- Optional description.
+- Optional image.
+- Optional video.
+- Incident timestamp.
+- Optional severity.
+- Reporter identity or anonymous-report setting.
+
+### Incident lifecycle
+
+- Submitted.
+- Pending verification.
+- Verified.
+- Rejected.
+- Resolved.
+- Expired.
+
+### Required behaviour
+
+- Display reports on the map.
+- Notify affected users when appropriate.
+- Suggest alternative routes.
+- Allow administrators to review reports.
+- Maintain an incident history.
+- Allow users to mark an incident as no longer present.
+
+Do not automatically treat every user report as verified.
+
+## MODULE 5 — AI Congestion Prediction (MANDATORY)
+
+### Objective
+
+Predict congestion 15–30 minutes ahead using available traffic and contextual information.
+
+### Input features
+
+- Historical traffic measurements.
+- Current traffic speed.
+- Road capacity.
+- Time of day.
+- Day of week.
+- Traffic incidents.
+- Weather information, when available.
+- Nearby road congestion.
+- Historical patterns.
+
+### Prediction outputs
+
+- Predicted congestion level.
+- Predicted speed or speed category.
+- Prediction horizon.
+- Confidence or uncertainty estimate.
+- Affected road segments.
+- Recommended alternative routes.
+
+### Model implementation
+
+Use a practical, explainable baseline before introducing a complex model.
+
+Possible approaches:
+
+- Gradient boosting.
+- Random Forest.
+- Time-series forecasting.
+- Regression models.
+- Historical pattern baselines.
+
+The exact algorithm should be selected based on the available dataset.
+
+### Important requirements
+
+- Support 15-minute and 30-minute prediction horizons.
+- Display actual versus predicted traffic where ground truth is available.
+- Record prediction timestamps.
+- Track prediction errors.
+- Display confidence or uncertainty.
+- Identify whether the prediction is trained, baseline-generated or simulated.
+- Never claim high prediction accuracy without evaluation.
+
+If real historical data is unavailable, create a labelled synthetic dataset and document the assumptions.
+
+## MODULE 6 — Intelligent Incident Detection and Network Impact Analysis (MANDATORY)
+
+### Duplicate incident detection
+
+Identify potentially duplicate reports using:
+
+- Geographic proximity.
+- Incident category.
+- Submission time.
+- Text similarity.
+- Similar media, when appropriate.
+
+Present duplicate candidates for verification.
+
+Do not merge reports solely because they are close together.
+
+### Incident severity estimation
+
+Consider:
+
+- Incident type.
+- Number of affected lanes, if known.
+- Road capacity.
+- Reported severity.
+- Traffic conditions.
+- Available camera observations.
+- Potential obstruction duration.
+
+Output:
+
+- Severity category.
+- Confidence.
+- Evidence.
+- Verification status.
+
+### Graph-based network impact analysis
+
+When an incident is confirmed or simulated:
+
+1. Identify the affected road segment.
+2. Identify connected segments.
+3. Calculate affected routes.
+4. Estimate detour impact.
+5. Identify alternative paths.
+6. Show potentially affected junctions.
+7. Simulate road closure or lane blockage.
+8. Recommend diversions.
+
+Display the affected road network visually.
+
+Distinguish a simulated road closure from an actual reported closure.
+
+## MODULE 7 — Adaptive Traffic Signal Optimization (MANDATORY)
+
+Build an interactive traffic signal simulation.
+
+### Junction inputs
+
+- Vehicle density.
+- Queue length.
+- Traffic flow.
+- Number of approaches.
+- Current signal timings.
+- Optional emergency vehicle presence.
+
+### Features
+
+- Display a selected junction.
+- Show individual traffic approaches.
+- Show vehicle queues.
+- Show signal phases.
+- Display current signal timing.
+- Calculate optimized signal timing.
+- Compare current and optimized configurations.
+- Show before-and-after waiting times.
+- Show estimated queue reduction.
+- Show throughput changes.
+
+### Optimization logic
+
+Use a transparent and configurable algorithm based on queue length and vehicle density.
+
+Explain why a signal phase received more or less green time.
+
+Include minimum and maximum green-time constraints, yellow intervals and all-red clearance intervals in the simulation.
+
+This is a simulation. Do not imply that the platform can remotely control real municipal traffic lights.
+
+## MODULE 8 — Emergency Vehicle Priority Routing (MANDATORY)
+
+### Supported vehicle types
+
+- Ambulance.
+- Fire service.
+- Other configurable emergency vehicles.
+
+### Features
+
+- Enter emergency destination.
+- Select emergency vehicle type.
+- Calculate an emergency-optimized route.
+- Consider distance.
+- Consider predicted congestion.
+- Consider incidents.
+- Consider road closures.
+- Identify affected junctions.
+- Simulate signal priority.
+- Display normal versus emergency ETA.
+- Calculate estimated time saved.
+
+### Simulation behaviour
+
+When an emergency vehicle approaches a simulated junction:
+
+- Identify the relevant approach.
+- Simulate priority passage.
+- Adjust simulated signal phases.
+- Recalculate the route if necessary.
+- Display the estimated time saved.
+
+Never claim actual signal pre-emption or real emergency vehicle tracking unless a legitimate authorized integration exists.
+
+## MODULE 9 — CCTV / LIVE CAMERA MONITORING
+
+### Objective
+
+Allow users to inspect authorized cameras associated with traffic junctions or selected regions.
+
+### Camera discovery
+
+Provide:
+
+- Camera markers on the map.
+- Camera list.
+- Region-based camera filtering.
+- Camera status.
+- Camera location.
+- Camera type.
+- Last available snapshot timestamp.
+- Live/Offline/Unavailable status.
+
+### Camera sources
+
+Support configurable sources:
+
+1. Authorized municipal traffic cameras.
+2. Authorized public traffic webcams.
+3. Project-owned IP cameras.
+4. Other explicitly authorized camera feeds.
+5. Laptop webcam demonstration source.
+
+Do not scrape private cameras, bypass authentication or expose unsecured camera feeds.
+
+Do not assume every public camera directory grants permission to redistribute its streams.
+
+### User workflow
+
+1. User opens the traffic map.
+2. User selects a region or junction.
+3. System displays available authorized cameras.
+4. User selects a camera.
+5. Backend checks its availability.
+6. Website displays an authorized snapshot or supported live stream.
+7. User can request AI analysis.
+8. User can send a snapshot or short recorded clip to Telegram.
+9. Website and Telegram display the associated analysis.
+
+### Streaming architecture
+
+Use an appropriate media server such as MediaMTX when RTSP ingest and WebRTC/HLS distribution are required.
+
+Use FFmpeg for:
+
+- Video conversion.
+- Frame extraction.
+- Clip compression.
+- Thumbnail generation.
+- Video processing.
+
+Do not expose RTSP URLs, camera usernames or passwords to the frontend.
+
+The backend should issue authorized, short-lived playback access where needed.
+
+### Important limitation
+
+The Telegram bot is for requesting snapshots, receiving clips, receiving analysis and opening secure stream links. It is not a replacement for a continuous live video player.
+
+Continuous live playback belongs in the website's video player.
+
+## MODULE 10 — LAPTOP WEBCAM DEMONSTRATION MODE
+
+This is a separate, mandatory demonstration feature.
+
+### Objective
+
+Allow the project to demonstrate camera-based traffic analysis without requiring a physical CCTV installation.
+
+### Camera interface
+
+Provide a dedicated page or panel called:
+
+**Demo Camera Studio**
+
+### Features
+
+- Request laptop webcam permission.
+- Display the live webcam preview.
+- Start and stop recording.
+- Capture a still image.
+- Record a short video.
+- Preview captured media.
+- Retake or discard media.
+- Select a region/junction label.
+- Add an optional description.
+- Submit media for AI analysis.
+- Send media to the connected Telegram bot.
+
+### Browser requirements
+
+Use the browser's MediaDevices API and MediaRecorder API.
+
+Webcam access requires user permission and a secure browser context such as HTTPS or localhost.
+
+Display a clear camera-active indicator.
+
+Never capture images or videos without an explicit user action.
+
+### Timestamp requirements
+
+Each capture must have:
+
+- Capture timestamp.
+- Upload timestamp.
+- Timezone information.
+- Media source.
+- Selected region or junction.
+- Unique media ID.
+
+Store timestamps in UTC and display them in the user's local timezone.
+
+Do not replace the capture timestamp with the upload timestamp.
+
+If an image is sent later, preserve its original capture time.
+
+### Demonstration data integrity
+
+Label laptop webcam content as:
+
+**DEMO CAMERA — LOCAL DEVICE**
+
+Do not present laptop webcam footage as an actual municipal traffic camera.
+
+## MODULE 11 — NVIDIA AI IMAGE AND VIDEO ANALYSIS
+
+### Objective
+
+Analyze camera snapshots and recorded clips using a model accessed through NVIDIA's API catalog.
+
+### Provider
+
+NVIDIA API Catalog / NVIDIA NIM.
+
+The exact model will be chosen later.
+
+Do not hardcode a specific model name or endpoint.
+
+### Architecture requirement
+
+Create a provider-independent AI service layer.
+
+Suggested interface:
+
+- `analyzeImage()`
+- `analyzeVideoFrames()`
+- `getAvailableModelConfiguration()`
+- `validateModelCapabilities()`
+- `getAnalysisStatus()`
+
+The NVIDIA integration must be replaceable without rewriting the camera, Telegram or dashboard modules.
+
+### Model selection configuration
+
+Store configurable settings:
+
+- Provider.
+- API base URL.
+- Model identifier.
+- API key reference.
+- Supported input modalities.
+- Request timeout.
+- Maximum image size.
+- Maximum video duration.
+- Frame sampling interval.
+- Retry policy.
+
+The actual NVIDIA model and endpoint will be configured after model selection.
+
+### Image analysis
+
+The analysis should attempt to identify:
+
+- Approximate vehicle count.
+- Vehicle categories where recognizable.
+- Traffic density.
+- Queue length or queue severity.
+- Visible congestion.
+- Road obstructions.
+- Possible accidents.
+- Possible roadblocks.
+- Unusual traffic conditions.
+- Confidence or uncertainty.
+- Important visual observations.
+
+### Video analysis
+
+Do not assume that an image model can accept an entire video file.
+
+Use a controlled video-processing pipeline:
+
+1. Receive the uploaded video.
+2. Validate format, size and duration.
+3. Extract representative frames using FFmpeg.
+4. Sample frames at a configurable interval.
+5. Submit frames to the selected multimodal model.
+6. Analyze temporal changes across the sampled frames.
+7. Generate a consolidated report.
+8. Save the analysis result.
+9. Display the result on the website.
+10. Send the result to Telegram.
+
+If the selected model explicitly supports direct video input, allow a configurable direct-video adapter.
+
+### Structured AI output
+
+Require a consistent JSON response structure similar to:
+
+{
+  "media_id": "unique-id",
+  "analysis_type": "image_or_video",
+  "source": "demo_camera_or_authorized_camera",
+  "capture_timestamp": "ISO-8601",
+  "processing_timestamp": "ISO-8601",
+  "region": "selected-region",
+  "traffic_density": "low_moderate_high",
+  "estimated_vehicle_count": null,
+  "visible_obstructions": [],
+  "possible_incidents": [],
+  "observations": [],
+  "confidence": null,
+  "limitations": [],
+  "summary": "Human-readable summary"
+}
+
+Validate model output before saving it.
+
+If the model returns invalid JSON, attempt controlled parsing or return a clear processing error. Never silently fabricate missing fields.
+
+### Critical AI limitations
+
+- AI image analysis is not proof that an accident occurred.
+- A single image cannot establish vehicle speed.
+- A video sampled at intervals cannot guarantee continuous tracking.
+- Vehicle counts are estimates and should be labelled accordingly.
+- The system must not identify people.
+- Do not store unnecessary identifiable faces or number plates.
+- The AI must communicate uncertainty.
+
+### Result distribution
+
+Every successful analysis must be available through:
+
+1. Website dashboard.
+2. Media details page.
+3. Telegram bot.
+
+The website and Telegram must display the same stored analysis result, not run separate inconsistent analyses.
+
+## MODULE 12 — TELEGRAM BOT INTEGRATION
+
+### Objective
+
+Provide a separate, useful traffic intelligence interface through Telegram.
+
+The bot must communicate with the same backend and database as the website.
+
+### Main commands
+
+Implement at least:
+
+- `/start` — register or link the user.
+- `/help` — show available commands.
+- `/status` — display service and connection status.
+- `/map` — open the traffic dashboard.
+- `/region` — select or search a region.
+- `/cameras` — show available authorized cameras.
+- `/snapshot` — request the latest available camera image.
+- `/clip` — request a supported short camera clip.
+- `/analyze` — request AI analysis of a selected image or video.
+- `/incidents` — show nearby or selected-region incidents.
+- `/routes` — open route planning or request route information.
+- `/subscribe` — subscribe to regional traffic alerts.
+- `/unsubscribe` — stop regional alerts.
+
+Use Telegram inline keyboards for selecting cameras, regions and available actions.
+
+### Camera workflow through Telegram
+
+Example:
+
+User: `/cameras`
+
+Bot:
+
+"Select a monitored region."
+
+[Region A] [Region B] [Region C]
+
+User selects Region A.
+
+Bot:
+
+"Available cameras in Region A"
+
+[Camera 01] [Camera 02] [Camera 03]
+
+User selects Camera 01.
+
+Bot provides:
+
+- Latest available snapshot or authorized clip.
+- Camera name.
+- Region.
+- Capture timestamp.
+- Camera status.
+- Website viewing link.
+- Option to request AI analysis.
+
+### Snapshot workflow
+
+When a user requests a snapshot:
+
+1. Validate the Telegram user.
+2. Resolve the selected camera.
+3. Check camera availability.
+4. Retrieve an authorized snapshot.
+5. Preserve its capture timestamp.
+6. Generate a media record.
+7. Send the image to Telegram.
+8. Optionally request AI analysis.
+9. Send the result to Telegram.
+10. Make the same result accessible on the website.
+
+### Video workflow
+
+- Retrieve an authorized short clip where supported.
+- Validate file size and format.
+- Compress if required.
+- Send as a Telegram video.
+- Preserve the original timestamp.
+- Send a separate analysis message.
+- Provide a website link for larger recordings.
+
+Handle Telegram's current upload limits and rate limits. Do not assume unlimited video uploads.
+
+### Laptop webcam to Telegram
+
+From Demo Camera Studio:
+
+1. User captures an image or records a video.
+2. User previews it.
+3. User selects Send to Telegram.
+4. Backend validates the media.
+5. Backend uploads it using the Telegram Bot API.
+6. Bot sends the image/video with metadata.
+7. AI analysis is performed.
+8. Bot sends the analysis result.
+9. Website stores and displays the same result.
+
+### Telegram account linking
+
+Use a secure account-linking flow.
+
+- Generate a short-lived one-time linking token.
+- Associate the verified Telegram account with the website account.
+- Expire used tokens.
+- Do not trust a user-supplied Telegram username as proof of identity.
+- Store Telegram chat identifiers securely.
+- Allow account unlinking.
+
+### Notifications
+
+Support configurable alerts for:
+
+- New verified incidents.
+- Severe congestion.
+- Predicted congestion.
+- Road closures.
+- Major route disruptions.
+- Camera availability changes, where useful.
+
+Prevent duplicate notifications and respect user subscription preferences.
+
+## MODULE 13 — ADMINISTRATOR DASHBOARD
+
+### Dashboard overview
+
+Display:
+
+- Total monitored road segments.
+- Available cameras.
+- Offline cameras.
+- Active incidents.
+- Pending incident reports.
+- Verified incidents.
+- Severe congestion areas.
+- Predicted congestion areas.
+- Active AI analysis jobs.
+- Traffic API status.
+- Last data update.
+
+### Incident management
+
+- View reports.
+- Inspect report evidence.
+- Verify reports.
+- Reject false reports.
+- Merge duplicates.
+- Resolve incidents.
+- Change incident severity.
+- View incident history.
+
+### Camera management
+
+- Register authorized camera.
+- Edit camera metadata.
+- Assign region and road segment.
+- Enable or disable camera.
+- View connection health.
+- Inspect last snapshot timestamp.
+- Configure secure stream references.
+
+### AI management
+
+- View analysis jobs.
+- View failed jobs.
+- Retry failed jobs.
+- Inspect analysis results.
+- View model/provider configuration.
+- View API usage and quota errors.
+
+### Traffic management
+
+- Inspect traffic measurements.
+- Inspect predictions.
+- View affected road networks.
+- Run signal simulations.
+- Compare route quality.
+
+## MODULE 14 — NOTIFICATIONS AND REAL-TIME UPDATES
+
+Use WebSockets or Socket.IO for relevant live dashboard updates.
+
+Examples:
+
+- New incident report.
+- Incident verification.
+- Camera status change.
+- AI analysis completion.
+- Traffic condition update.
+- Prediction refresh.
+- Route disruption.
+
+Do not continuously refresh every component unnecessarily.
+
+Use targeted updates and sensible polling intervals.
+
+## MODULE 15 — ANALYTICS AND PERFORMANCE EVALUATION
+
+Include a dedicated analytics page.
+
+### Traffic analytics
+
+- Congestion by region.
+- Traffic speed trends.
+- Peak traffic periods.
+- Incident frequency.
+- Road closure impact.
+- Traffic prediction history.
+
+### Route analytics
+
+- Average ETA.
+- Route distance.
+- Estimated fuel consumption.
+- Route reliability.
+- Alternative route comparison.
+
+### Signal analytics
+
+- Before-and-after average waiting time.
+- Queue length.
+- Vehicle throughput.
+- Estimated improvement.
+
+### Prediction analytics
+
+- Predicted versus observed traffic.
+- Prediction error.
+- Model version.
+- Forecast horizon.
+- Data source.
+
+### Evaluation metrics
+
+At minimum, report:
+
+- MAE or RMSE for speed prediction, when ground truth exists.
+- Prediction accuracy using an appropriate congestion classification metric.
+- Average route travel time.
+- Route distance.
+- Estimated waiting time.
+- Incident detection precision/recall, if labelled test data exists.
+- Signal simulation waiting-time improvement.
+- Emergency route time saved in simulation.
+
+Do not display invented accuracy percentages.
+
+---
+
+# 5. NON-FUNCTIONAL REQUIREMENTS
+
+## Performance
+
+- Responsive UI.
+- Lazy-load nonessential modules.
+- Paginate large datasets.
+- Use caching for appropriate read-heavy endpoints.
+- Process video asynchronously.
+- Do not block normal website requests while AI analysis runs.
+- Use background jobs for long-running tasks.
+- Avoid unnecessary map re-rendering.
+
+## Security
+
+- Environment variables for secrets.
+- Backend-only API keys.
+- Secure authentication.
+- Role-based access control.
+- Input validation.
+- File-type validation.
+- File-size limits.
+- Rate limiting.
+- Secure upload handling.
+- Protected camera streams.
+- Expiring media access links.
+- Telegram account verification.
+- Authorization checks on every protected resource.
+
+Never commit `.env` files or API credentials.
+
+## Privacy
+
+- Obtain webcam permission.
+- Display recording status.
+- Require user action before capture.
+- Do not secretly record.
+- Avoid unnecessary retention of faces and number plates.
+- Provide media deletion controls.
+- Define retention policies.
+- Restrict access to uploaded recordings.
+
+## Reliability
+
+- Handle missing traffic data.
+- Handle offline cameras.
+- Handle expired API keys.
+- Handle NVIDIA quota exhaustion.
+- Handle Telegram upload errors.
+- Handle malformed AI responses.
+- Handle incomplete predictions.
+- Show meaningful errors.
+- Maintain useful fallback states.
+
+---
+
+# 6. TECHNICAL ARCHITECTURE
+
+## Recommended technology stack
+
+### Frontend
+
+- React.
+- TypeScript.
+- Vite.
+- CSS Modules or a consistent CSS architecture.
+- MapLibre GL JS.
+- Socket.IO Client.
+- Recharts for analytics, where needed.
+
+### Backend
+
+- Node.js.
+- Express.
+- TypeScript.
+- REST API.
+- Socket.IO.
+- Background job queue.
+
+### Database
+
+- PostgreSQL.
+- PostGIS for geographic data.
+
+### AI and computer vision
+
+- Python.
+- FastAPI for the AI service.
+- NVIDIA API integration through a configurable adapter.
+- OpenCV.
+- FFmpeg.
+- Optional YOLO-based vehicle detection as a separate computer-vision component.
+
+### Media
+
+- MediaMTX for supported camera streaming workflows.
+- FFmpeg for processing.
+- Object storage or controlled file storage for uploaded media.
+
+### Maps and traffic
+
+- OpenStreetMap.
+- MapLibre GL JS.
+- TomTom Traffic API, subject to account availability and limits.
+- Configurable geocoding provider.
+- Dijkstra / A* routing.
+
+### Communication
+
+- Telegram Bot API.
+- Socket.IO.
+
+## Architecture overview
+
+Frontend:
+React + TypeScript
+    |
+    | REST API / Socket.IO
+    |
+Backend:
+Node.js + Express
+    |
+    |---------------- PostgreSQL + PostGIS
+    |
+    |---------------- Traffic Provider Adapter
+    |
+    |---------------- Routing Engine
+    |
+    |---------------- Camera / Media Service
+    |
+    |---------------- Telegram Bot Service
+    |
+    |---------------- Background Job Queue
+    |
+    |---------------- Python AI Service
+                              |
+                              | NVIDIA API Adapter
+                              |
+                              | OpenCV / FFmpeg
+
+### Architecture principles
+
+- One shared backend for the website and Telegram bot.
+- One database as the source of truth.
+- Separate AI processing from normal API requests.
+- Separate camera streaming from traffic-data collection.
+- Keep provider-specific code behind adapters.
+- Do not duplicate business logic in the frontend and Telegram bot.
+- Use asynchronous processing for media and AI tasks.
+
+---
+
+# 7. DATABASE DESIGN
+
+Create a normalized relational database with PostGIS support.
+
+Suggested tables:
+
+### Users and access
+
+- `users`
+- `user_roles`
+- `user_sessions`
+- `telegram_accounts`
+- `telegram_link_tokens`
+- `user_subscriptions`
+
+### Geographic and traffic data
+
+- `regions`
+- `road_segments`
+- `road_nodes`
+- `junctions`
+- `traffic_measurements`
+- `traffic_predictions`
+- `weather_measurements`
+
+### Routing
+
+- `routes`
+- `route_segments`
+- `route_preferences`
+- `route_comparisons`
+
+### Incidents
+
+- `incidents`
+- `incident_reports`
+- `incident_evidence`
+- `incident_verification_logs`
+- `incident_network_impacts`
+
+### Camera and media
+
+- `cameras`
+- `camera_status_logs`
+- `media_assets`
+- `media_access_logs`
+- `media_processing_jobs`
+
+### AI
+
+- `ai_providers`
+- `ai_model_configs`
+- `ai_analysis_jobs`
+- `ai_analysis_results`
+
+### Traffic signal simulation
+
+- `signal_junctions`
+- `signal_phases`
+- `signal_simulations`
+- `signal_simulation_results`
+
+### Emergency simulation
+
+- `emergency_route_sessions`
+- `emergency_signal_events`
+
+### System
+
+- `notifications`
+- `audit_logs`
+- `api_usage_logs`
+
+### Database rules
+
+1. Use UUIDs or another consistent unique identifier strategy.
+2. Store geographic information using PostGIS types.
+3. Store timestamps in UTC.
+4. Index geographic columns.
+5. Index frequently queried timestamps and status columns.
+6. Store structured AI results as validated JSONB where appropriate.
+7. Store media files outside the relational database.
+8. Store media metadata and secure storage references in the database.
+9. Do not store raw video frames in PostgreSQL.
+10. Never store plaintext camera passwords or API keys.
+
+---
+
+# 8. KEY API ENDPOINTS
+
+Implement consistent REST endpoints.
+
+### Authentication
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+
+### Map and traffic
+
+- `GET /api/map/regions`
+- `GET /api/map/road-segments`
+- `GET /api/traffic/flow`
+- `GET /api/traffic/incidents`
+- `GET /api/traffic/status`
+
+### Routes
+
+- `POST /api/routes/calculate`
+- `POST /api/routes/compare`
+- `GET /api/routes/:id`
+
+### Incidents
+
+- `POST /api/incidents`
+- `GET /api/incidents`
+- `GET /api/incidents/:id`
+- `PATCH /api/incidents/:id/status`
+- `POST /api/incidents/:id/verify`
+- `POST /api/incidents/:id/resolve`
+
+### Predictions
+
+- `POST /api/predictions/generate`
+- `GET /api/predictions`
+- `GET /api/predictions/:roadSegmentId`
+
+### Signals
+
+- `POST /api/signals/simulate`
+- `GET /api/signals/junctions`
+- `GET /api/signals/simulations/:id`
+
+### Emergency routing
+
+- `POST /api/emergency/routes`
+- `POST /api/emergency/simulate-priority`
+- `GET /api/emergency/sessions/:id`
+
+### Cameras
+
+- `GET /api/cameras`
+- `GET /api/cameras/:id`
+- `GET /api/cameras/:id/status`
+- `GET /api/cameras/:id/snapshot`
+- `GET /api/cameras/:id/playback`
+- `POST /api/cameras/:id/request-clip`
+
+### Webcam and media
+
+- `POST /api/media/upload`
+- `POST /api/media/:id/analyze`
+- `GET /api/media/:id`
+- `GET /api/media/:id/analysis`
+- `DELETE /api/media/:id`
+
+### Telegram
+
+- `POST /api/telegram/webhook`
+- `POST /api/telegram/link`
+- `DELETE /api/telegram/link`
+- `POST /api/telegram/notifications/test`
+
+### Administration
+
+- `GET /api/admin/overview`
+- `GET /api/admin/incidents`
+- `GET /api/admin/cameras`
+- `GET /api/admin/ai-jobs`
+- `GET /api/admin/analytics`
+
+All endpoints must validate input, authenticate where required, authorize access and return consistent error responses.
+
+---
+
+# 9. UI / UX REQUIREMENTS
+
+## Overall design direction
+
+Build a professional traffic intelligence platform.
+
+The interface should feel like a serious urban mobility and traffic operations product, not a generic AI-generated dashboard.
+
+### Design characteristics
+
+- Clean, modern and restrained.
+- High-quality typography.
+- Strong visual hierarchy.
+- Consistent spacing.
+- Carefully designed cards.
+- Functional map-first layout.
+- Responsive desktop and mobile views.
+- Subtle transitions.
+- Clear loading, empty and error states.
+- Readable charts.
+- Minimal unnecessary decoration.
+
+Avoid:
+
+- Excessive gradients.
+- Random neon colours.
+- Too many glassmorphism effects.
+- Excessive rounded cards.
+- Overloaded dashboards.
+- Fake live indicators.
+- Decorative charts with meaningless data.
+- Unnecessary 3D animations.
+- Excessive animated backgrounds.
+- Generic AI-generated website layouts.
+
+### Suggested navigation
+
+1. Overview
+2. Live Traffic Map
+3. Route Planner
+4. Incident Reports
+5. Traffic Prediction
+6. Camera Explorer
+7. Demo Camera Studio
+8. Signal Optimization
+9. Emergency Routing
+10. Analytics
+11. Telegram Integration
+12. Admin Dashboard
+
+Do not force every page into the primary navigation if a more sensible grouped navigation improves usability.
+
+### Live Traffic Map layout
+
+- Large interactive map.
+- Search and route controls.
+- Traffic layer controls.
+- Camera markers.
+- Incident markers.
+- Selected-region details.
+- Congestion legend.
+- Optional live event panel.
+
+### Route Planner layout
+
+- Source and destination inputs.
+- Route comparison cards.
+- Recommended route explanation.
+- ETA and distance.
+- Congestion details.
+- Incident warnings.
+- Alternative routes.
+
+### Camera Explorer layout
+
+- Region selector.
+- Camera markers.
+- Camera list.
+- Snapshot/live preview.
+- Camera status.
+- Timestamp.
+- Analyze button.
+- Send to Telegram button.
+
+### Demo Camera Studio layout
+
+- Webcam preview.
+- Camera controls.
+- Capture image.
+- Start recording.
+- Stop recording.
+- Media preview.
+- Retake.
+- Analyze.
+- Send to Telegram.
+- Analysis result panel.
+
+### AI analysis page
+
+- Media preview.
+- Source and region.
+- Capture timestamp.
+- Processing timestamp.
+- Vehicle estimate.
+- Traffic density.
+- Visible obstructions.
+- Possible incidents.
+- Confidence and limitations.
+- Human-readable AI summary.
+- Telegram delivery status.
+
+---
+
+# 10. PROJECT ACCEPTANCE CRITERIA
+
+The project is not complete merely because the frontend looks finished.
+
+The following must be demonstrably functional.
+
+### Core PS-01
+
+- [ ] User can enter source and destination.
+- [ ] Multiple routes can be displayed.
+- [ ] Shortest and fastest routes can be compared.
+- [ ] ETA and distance are calculated.
+- [ ] Incidents can be reported.
+- [ ] Incidents appear on the map.
+- [ ] Alternate routes respond to incidents and congestion.
+- [ ] Admin can review reports.
+
+### Mandatory advanced features
+
+- [ ] 15-minute congestion prediction.
+- [ ] 30-minute congestion prediction.
+- [ ] Historical/contextual prediction inputs.
+- [ ] Duplicate incident detection.
+- [ ] Incident severity estimation.
+- [ ] Network impact analysis.
+- [ ] Simulated road closures and diversions.
+- [ ] Adaptive signal timing simulation.
+- [ ] Before-and-after waiting time comparison.
+- [ ] Emergency priority routing.
+- [ ] Simulated emergency signal priority.
+- [ ] Multi-factor route ranking.
+- [ ] Explanation of recommended routes.
+
+### Camera features
+
+- [ ] Authorized camera registry.
+- [ ] Region-based camera discovery.
+- [ ] Camera availability status.
+- [ ] Snapshot retrieval where supported.
+- [ ] Secure live playback where supported.
+- [ ] Laptop webcam access.
+- [ ] Still image capture.
+- [ ] Video recording.
+- [ ] Capture timestamp preservation.
+- [ ] Demo camera source clearly labelled.
+
+### NVIDIA AI features
+
+- [ ] Configurable NVIDIA provider.
+- [ ] Model identifier configurable later.
+- [ ] Image analysis pipeline.
+- [ ] Video frame extraction.
+- [ ] Video analysis pipeline.
+- [ ] Structured output validation.
+- [ ] Error and quota handling.
+- [ ] Results saved in database.
+- [ ] Results displayed on website.
+
+### Telegram
+
+- [ ] Telegram account linking.
+- [ ] `/start` and `/help`.
+- [ ] Camera selection.
+- [ ] Snapshot request.
+- [ ] Video/clip request where available.
+- [ ] Webcam image delivery.
+- [ ] Webcam video delivery.
+- [ ] Capture timestamp in message.
+- [ ] AI analysis delivery.
+- [ ] Incident alerts.
+- [ ] Regional subscriptions.
+- [ ] Website links.
+- [ ] Duplicate notification prevention.
+
+### Engineering quality
+
+- [ ] Frontend and backend communicate correctly.
+- [ ] Database migrations work.
+- [ ] API validation works.
+- [ ] Authentication and authorization work.
+- [ ] Secrets are protected.
+- [ ] Errors are handled.
+- [ ] No fake live data.
+- [ ] No nonfunctional buttons.
+- [ ] No broken routes.
+- [ ] No major console errors.
+- [ ] No major backend errors.
+- [ ] Responsive UI works.
+
+---
+
+# PART 2 — MASTER DEVELOPMENT PROMPT
+
+## COPY THE FOLLOWING PROMPT INTO YOUR CODING AGENT
+
+You are the lead software architect, senior full-stack engineer, AI engineer, database architect, UI/UX designer and quality-assurance engineer responsible for building **TrafficVision AI**.
+
+Your task is to design and implement a complete, professional, functional application based on the PRD above.
+
+This is a hackathon project for PS-01: Intelligent Traffic Management and Route Optimization System.
+
+You must treat the PRD and the official problem statement requirements as the source of truth.
+
+Do not reduce the project to a basic map with traffic markers.
+
+Do not create a static prototype that only looks functional.
+
+Do not claim features work unless they have been implemented and tested.
+
+## A. FIRST: INSPECT AND PLAN
+
+Before modifying or generating files:
+
+1. Inspect the existing project directory.
+2. Identify existing frameworks, dependencies, files and working features.
+3. Do not delete or overwrite useful existing work without a reason.
+4. Identify missing modules.
+5. Create a clear implementation plan.
+6. Create a proper folder structure.
+7. Create a technical architecture document.
+8. Create a database schema plan.
+9. Create an API contract.
+10. Identify external API requirements and configuration variables.
+
+If a project already exists, extend it carefully rather than rebuilding everything unnecessarily.
+
+Do not begin by generating the entire application in one enormous code dump.
+
+Implement the project in verified stages.
+
+## B. NON-NEGOTIABLE ENGINEERING RULES
+
+### 1. Keep the stack controlled
+
+Use:
+
+- React.
+- TypeScript.
+- Vite.
+- CSS Modules or one consistent styling system.
+- Node.js.
+- Express.
+- PostgreSQL.
+- PostGIS.
+- MapLibre GL JS.
+- Socket.IO.
+- Python/FastAPI for AI and processing services where appropriate.
+- OpenCV and FFmpeg for media processing.
+- Telegram Bot API.
+- NVIDIA API Catalog through a configurable provider adapter.
+
+Do not combine multiple frontend frameworks.
+
+Do not add Three.js, WebGL frameworks, multiple animation libraries, unnecessary chart libraries or complex state-management systems without a demonstrated requirement.
+
+Do not create an unnecessarily complicated frontend architecture.
+
+Keep the implementation understandable and maintainable.
+
+### 2. No fake functionality
+
+Every button must perform its intended action.
+
+Every form must validate and submit correctly.
+
+Every map marker must correspond to actual data.
+
+Every chart must use real retrieved, computed or explicitly simulated data.
+
+Every API integration must have proper success and failure states.
+
+If a feature is not connected to a real provider, label it as simulated or unavailable.
+
+Never use a fake live-data animation to imitate real traffic.
+
+### 3. Data source transparency
+
+Create a reusable data-provenance system.
+
+Every relevant data record must identify its source.
+
+Supported source labels:
+
+- LIVE_EXTERNAL_API
+- AUTHORIZED_CAMERA
+- USER_REPORTED
+- HISTORICAL
+- SIMULATED
+- AI_PREDICTED
+
+Display the source in the UI.
+
+Keep the source and timestamp associated with the measurement.
+
+Never combine simulated measurements with live measurements without preserving their identities.
+
+### 4. Environment and secret management
+
+Create a complete `.env.example`.
+
+Include configuration variables for:
+
+- Database.
+- Backend port.
+- Frontend origin.
+- Authentication secret.
+- Traffic provider.
+- Traffic API key.
+- Geocoding provider.
+- Telegram bot token.
+- Telegram webhook secret.
+- NVIDIA API key.
+- NVIDIA base URL.
+- NVIDIA model identifier.
+- Media storage.
+- Media server.
+- AI service.
+- Optional weather provider.
+
+Do not hardcode credentials.
+
+Do not expose API keys in frontend code.
+
+Do not commit `.env`.
+
+Provide clear setup instructions.
+
+### 5. Database discipline
+
+Use proper database migrations.
+
+Create foreign keys, indexes, constraints and relationships.
+
+Use PostGIS for geographic data.
+
+Store timestamps in UTC.
+
+Use transactions for multi-step operations.
+
+Do not store video binaries or individual video frames directly in PostgreSQL.
+
+Use secure file storage and store metadata in the database.
+
+### 6. API discipline
+
+Use a consistent API response format.
+
+Validate all incoming inputs.
+
+Use authentication and role-based authorization.
+
+Implement pagination.
+
+Implement rate limits.
+
+Handle external API errors.
+
+Avoid giant controller files.
+
+Separate:
+
+- Routes.
+- Controllers.
+- Services.
+- Repositories.
+- Middleware.
+- Validators.
+- Configuration.
+- Background jobs.
+
+### 7. Frontend discipline
+
+Create reusable components.
+
+Keep pages modular.
+
+Keep API calls in a dedicated client/service layer.
+
+Use proper loading states.
+
+Use error boundaries where appropriate.
+
+Avoid putting all application logic in one component.
+
+Do not create duplicate components with slightly different names.
+
+Do not allow CSS rules from one page to break another page.
+
+Keep mobile and desktop layouts usable.
+
+---
+
+## C. IMPLEMENTATION PHASES
+
+### PHASE 1 — PROJECT FOUNDATION
+
+Build:
+
+- Frontend.
+- Backend.
+- Database connection.
+- Environment configuration.
+- Authentication.
+- Role management.
+- API error handling.
+- Base layout.
+- Navigation.
+- Responsive design system.
+
+Deliver:
+
+- Working frontend.
+- Working backend.
+- Working database connection.
+- Working registration/login.
+- Admin and user roles.
+- Setup documentation.
+
+Test all of these before proceeding.
+
+### PHASE 2 — MAP AND TRAFFIC DATA
+
+Implement:
+
+- OpenStreetMap-compatible map.
+- MapLibre rendering.
+- Geocoding.
+- Source/destination selection.
+- Region selection.
+- Road network display.
+- Traffic provider adapter.
+- TomTom integration when credentials are configured.
+- Traffic flow overlay.
+- Incident overlay.
+- Traffic legend.
+- Traffic source labels.
+- Last-update timestamps.
+- Simulated traffic fallback.
+
+Important:
+
+The traffic map must work even when the external traffic API is unavailable.
+
+In that situation, use clearly labelled demo data rather than pretending that live traffic is available.
+
+Test:
+
+- Map loading.
+- Zooming.
+- Searching.
+- Marker selection.
+- Traffic layer toggling.
+- API failure behaviour.
+
+### PHASE 3 — ROUTING ENGINE
+
+Implement:
+
+- Source and destination search.
+- Road graph.
+- Dijkstra or A*.
+- Shortest route.
+- Fastest route.
+- Congestion-aware route.
+- Incident-aware route.
+- Multi-factor route ranking.
+- ETA calculation.
+- Distance calculation.
+- Fuel estimation.
+- Reliability scoring.
+- Route comparison UI.
+- Route recommendation explanation.
+
+Make the route weights configurable.
+
+Ensure that routes respond to changes in traffic and incident data.
+
+Test the route engine with known graph examples and closed-road scenarios.
+
+### PHASE 4 — INCIDENT MANAGEMENT
+
+Implement:
+
+- Incident submission.
+- Incident categories.
+- Location selection.
+- Image/video evidence.
+- Verification states.
+- Duplicate candidate detection.
+- Severity estimation.
+- Admin review.
+- Incident history.
+- Incident map markers.
+- Incident notifications.
+
+Implement network impact analysis using the road graph.
+
+Simulate:
+
+- Lane blockage.
+- Full road closure.
+- Accident-related congestion.
+- Alternate route generation.
+
+Test duplicate detection with similar reports.
+
+Do not automatically merge uncertain duplicates.
+
+### PHASE 5 — AI CONGESTION PREDICTION
+
+Build a separate prediction module.
+
+Implement:
+
+- Historical traffic dataset.
+- Data preprocessing.
+- Feature extraction.
+- Baseline prediction.
+- 15-minute forecast.
+- 30-minute forecast.
+- Congestion classification.
+- Prediction confidence.
+- Prediction history.
+- Prediction dashboard.
+- Actual versus predicted comparison.
+
+Use historical or simulated datasets when necessary.
+
+Document the dataset and assumptions.
+
+Evaluate the model using appropriate metrics.
+
+Do not invent prediction accuracy.
+
+### PHASE 6 — ADAPTIVE SIGNAL SIMULATION
+
+Implement:
+
+- Junction selection.
+- Vehicle queue simulation.
+- Vehicle density inputs.
+- Signal phase controls.
+- Current signal timings.
+- Optimized timing calculations.
+- Before-and-after comparisons.
+- Waiting-time calculations.
+- Queue reduction.
+- Throughput estimates.
+- Simulation history.
+
+Make the simulation understandable and visually clear.
+
+Test multiple junction approaches.
+
+### PHASE 7 — EMERGENCY PRIORITY ROUTING
+
+Implement:
+
+- Emergency vehicle selection.
+- Emergency destination.
+- Emergency route calculation.
+- Predicted traffic consideration.
+- Incident avoidance.
+- Signal priority simulation.
+- Normal route comparison.
+- Emergency ETA.
+- Estimated time saved.
+
+Make it explicit that the feature is a simulation.
+
+Test with road closures and high-congestion conditions.
+
+### PHASE 8 — CAMERA EXPLORER
+
+Implement the camera registry.
+
+Each camera must have:
+
+- Unique identifier.
+- Name.
+- Region.
+- Geographic location.
+- Source type.
+- Authorization status.
+- Availability status.
+- Last successful check.
+- Secure stream reference.
+- Snapshot capability.
+- Playback capability.
+
+Implement:
+
+- Region-based camera discovery.
+- Map camera markers.
+- Camera details.
+- Snapshot retrieval.
+- Live playback where supported.
+- Camera status.
+- Offline state.
+- Last available timestamp.
+
+Never expose RTSP credentials.
+
+Never assume that a camera feed can legally be redistributed merely because it is publicly accessible.
+
+### PHASE 9 — LAPTOP WEBCAM DEMONSTRATION
+
+Create the **Demo Camera Studio**.
+
+Implement:
+
+- Webcam permission.
+- Live webcam preview.
+- Capture image.
+- Start recording.
+- Stop recording.
+- Preview image/video.
+- Retake.
+- Discard.
+- Upload.
+- AI analysis.
+- Send to Telegram.
+
+Use browser MediaDevices and MediaRecorder APIs.
+
+Preserve capture timestamps.
+
+Label every laptop capture as `DEMO CAMERA — LOCAL DEVICE`.
+
+Require explicit user interaction before recording.
+
+Handle denied webcam permissions and unsupported browsers gracefully.
+
+### PHASE 10 — NVIDIA AI INTEGRATION
+
+Create an independent AI provider layer.
+
+The NVIDIA model will be chosen later.
+
+Do not invent a model identifier.
+
+Do not assume every model supports images or video.
+
+Implement configuration for:
+
+- NVIDIA API key.
+- API endpoint.
+- Model identifier.
+- Supported modalities.
+- Request timeout.
+- File limits.
+- Frame-sampling interval.
+
+Implement:
+
+- Image upload.
+- Image validation.
+- Video validation.
+- FFmpeg frame extraction.
+- Image analysis.
+- Multi-frame video analysis.
+- Structured JSON output.
+- Output validation.
+- Job status.
+- Retry handling.
+- Quota handling.
+- Analysis persistence.
+
+If no model is configured, show:
+
+"NVIDIA AI analysis is not configured yet. Add a supported multimodal model to enable this feature."
+
+Do not simulate a successful NVIDIA response.
+
+Do not return fabricated AI analysis.
+
+For video, sample frames and send them to a compatible vision model unless the selected model explicitly supports video input.
+
+Save one canonical analysis result per completed job.
+
+### PHASE 11 — TELEGRAM BOT
+
+Create a dedicated Telegram bot service.
+
+Implement:
+
+- `/start`
+- `/help`
+- `/status`
+- `/map`
+- `/region`
+- `/cameras`
+- `/snapshot`
+- `/clip`
+- `/analyze`
+- `/incidents`
+- `/routes`
+- `/subscribe`
+- `/unsubscribe`
+
+Use inline keyboards.
+
+Implement secure account linking.
+
+Implement camera selection.
+
+Implement snapshot retrieval.
+
+Implement short clip retrieval where supported.
+
+Implement image and video uploads from Demo Camera Studio.
+
+Implement capture timestamp captions.
+
+Implement AI analysis delivery.
+
+Implement website links.
+
+Implement incident notifications.
+
+Implement regional subscriptions.
+
+Implement notification deduplication.
+
+Handle Telegram upload limits and API errors.
+
+The bot must use the same backend services and stored analysis records as the website.
+
+Do not duplicate the AI analysis pipeline inside the bot.
+
+### PHASE 12 — ADMIN AND ANALYTICS
+
+Implement:
+
+- Admin overview.
+- Incident moderation.
+- Camera management.
+- Traffic provider status.
+- AI job management.
+- Prediction analytics.
+- Route analytics.
+- Signal analytics.
+- Emergency simulation analytics.
+- Audit logs.
+
+Use real data from the backend.
+
+If no real data exists, use a clearly marked demonstration dataset.
+
+### PHASE 13 — INTEGRATION AND TESTING
+
+Perform end-to-end integration testing.
+
+Verify:
+
+1. User registration and login.
+2. Route calculation.
+3. Traffic retrieval.
+4. Incident submission.
+5. Incident verification.
+6. Duplicate detection.
+7. Congestion prediction.
+8. Road closure simulation.
+9. Signal optimization.
+10. Emergency route calculation.
+11. Camera discovery.
+12. Snapshot retrieval.
+13. Laptop webcam capture.
+14. Laptop video recording.
+15. Image upload.
+16. Video frame extraction.
+17. NVIDIA API request.
+18. AI output validation.
+19. Website analysis display.
+20. Telegram account linking.
+21. Telegram image delivery.
+22. Telegram video delivery.
+23. Telegram analysis delivery.
+24. Admin operations.
+
+Test both success and failure scenarios.
+
+Examples:
+
+- Traffic API key missing.
+- NVIDIA API key missing.
+- NVIDIA quota exhausted.
+- Camera offline.
+- Camera authorization invalid.
+- Telegram bot token invalid.
+- Webcam permission denied.
+- Invalid video format.
+- Oversized media file.
+- Database unavailable.
+- Duplicate incident submission.
+- Empty search result.
+- Closed road with no obvious alternative.
+
+The application must not crash when any of these happen.
+
+---
+
+## D. UI DESIGN AND FRONTEND QUALITY
+
+The frontend is a major evaluation component.
+
+Build a cohesive and professional design system.
+
+### Design goals
+
+- High-quality visual hierarchy.
+- Precise spacing.
+- Consistent typography.
+- Professional map presentation.
+- Clear data visualization.
+- Smooth but restrained animations.
+- Responsive layouts.
+- Excellent empty/loading/error states.
+- Strong contrast and accessibility.
+
+### Animations
+
+Use animations only where they improve comprehension.
+
+Examples:
+
+- Smooth map transitions.
+- Animated route drawing.
+- Marker selection transitions.
+- Subtle notification entry.
+- Camera status transitions.
+- Signal phase transitions.
+- Prediction timeline updates.
+- Chart transitions.
+
+Do not animate everything.
+
+Avoid excessive motion, unnecessary 3D effects and heavy rendering.
+
+### ASCII art
+
+If appropriate, use subtle traffic-network ASCII patterns as a background texture in selected sections.
+
+Keep the ASCII background low contrast and non-interactive.
+
+Do not allow it to interfere with readability, map controls or accessibility.
+
+Do not place large ASCII blocks behind important data.
+
+### UI testing
+
+Check:
+
+- Desktop layout.
+- Tablet layout.
+- Mobile layout.
+- Map controls.
+- Dropdowns.
+- Modals.
+- Forms.
+- Tables.
+- Charts.
+- Camera preview.
+- Video player.
+- Navigation.
+- Loading states.
+
+Do not declare the UI finished after viewing only the landing page.
+
+---
+
+## E. REQUIRED PROJECT DOCUMENTATION
+
+Create and maintain:
+
+1. `README.md`
+2. `PRD.md`
+3. `ARCHITECTURE.md`
+4. `DATABASE_SCHEMA.md`
+5. `API_DOCUMENTATION.md`
+6. `ENV_SETUP.md`
+7. `TESTING.md`
+8. `DATA_SOURCES.md`
+9. `AI_MODEL_CONFIGURATION.md`
+10. `TELEGRAM_SETUP.md`
+
+The documentation must explain:
+
+- How to install dependencies.
+- How to configure the database.
+- How to run migrations.
+- How to start frontend and backend.
+- How to configure traffic APIs.
+- How to register cameras.
+- How to configure NVIDIA.
+- How to configure Telegram.
+- How to run the webcam demonstration.
+- How to run tests.
+- Which features use real data.
+- Which features use simulated data.
+- Known limitations.
+
+---
+
+## F. DEFINITION OF DONE
+
+A module is complete only when:
+
+1. Its frontend exists.
+2. Its backend logic exists.
+3. Its database integration works where required.
+4. Its API contract is implemented.
+5. Its success states work.
+6. Its failure states work.
+7. Its permissions are correct.
+8. Its tests pass.
+9. Its documentation is updated.
+10. It has been integrated with the rest of the application.
+
+Do not mark a module complete just because its page has been created.
+
+Do not leave important buttons as placeholders.
+
+Do not silently skip difficult features.
+
+If a real external service cannot be configured, implement a working provider abstraction and a clearly labelled demonstration mode.
+
+---
+
+## G. FINAL DELIVERY REQUIREMENTS
+
+At the end of implementation, provide:
+
+1. Complete project directory structure.
+2. Working frontend.
+3. Working backend.
+4. Database migrations.
+5. API documentation.
+6. `.env.example`.
+7. Setup instructions.
+8. Telegram setup instructions.
+9. NVIDIA configuration instructions.
+10. Test results.
+11. List of implemented features.
+12. List of features using simulated data.
+13. List of external integrations requiring credentials.
+14. Known limitations.
+15. Demonstration instructions.
+
+Before declaring the project complete, run the application and test the actual user workflows.
+
+**Priority order: correctness first, functional integration second, visual quality third, additional polish fourth.**
+
+The final product must be a coherent, demonstrable, technically credible implementation of TrafficVision AI—not a collection of disconnected pages or a visually impressive mockup.
+
+END OF MASTER PROMPT.
