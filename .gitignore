@@ -19,11 +19,21 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# OS
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.pyc
+
+# ML models / caches
+ml-service/models/
+*.joblib
+*.graphml
+
+# OS / editor
 .DS_Store
 Thumbs.db
-
-# Editor
 .vscode/
 .idea/
 *.swp
@@ -31,3 +41,13 @@ Thumbs.db
 # Cache
 *.cache
 .turbo
+
+# Agent / assistant tooling (never committed)
+.claude/
+.opencode/
+.cursor/
+.windsurf/
+.agents/
+AGENTS.md
+agent-memory/
+memories/

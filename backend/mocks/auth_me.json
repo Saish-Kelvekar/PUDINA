@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Riya Sharma",
+      "email": "user@demo.test",
+      "role": "user",
+      "created_at": "2026-11-09T10:00:00Z"
+    }
+  },
+  "error": null
+}

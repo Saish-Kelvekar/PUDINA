@@ -1,0 +1,147 @@
+{
+  "success": true,
+  "data": {
+    "session_id": 801,
+    "vehicle_type": "ambulance",
+    "simulation": true,
+    "source": "SIMULATED",
+    "from": {
+      "node_id": "n5",
+      "name": "Jyothi Nivas College Junction",
+      "lat": 12.9296,
+      "lng": 77.558,
+      "snapped_m": 0
+    },
+    "to": {
+      "node_id": "n7",
+      "name": "St. John's Junction",
+      "lat": 12.9368,
+      "lng": 77.567,
+      "snapped_m": 0
+    },
+    "normal_route": {
+      "node_ids": [
+        "n5",
+        "n1",
+        "n2",
+        "n3",
+        "n7"
+      ],
+      "edge_ids": [
+        "e4",
+        "e1",
+        "e2",
+        "e9"
+      ],
+      "coords": [
+        [
+          12.9296,
+          77.558
+        ],
+        [
+          12.9303,
+          77.5572
+        ],
+        [
+          12.931,
+          77.5562
+        ],
+        [
+          12.9317,
+          77.558
+        ],
+        [
+          12.9324,
+          77.5598
+        ],
+        [
+          12.9331,
+          77.5616
+        ],
+        [
+          12.9338,
+          77.5634
+        ],
+        [
+          12.9354,
+          77.5652
+        ],
+        [
+          12.9368,
+          77.567
+        ]
+      ],
+      "distance_km": 1.6,
+      "eta_min": 6.1,
+      "signals_on_route": 3,
+      "speed_basis": "current (SIMULATED)"
+    },
+    "emergency_route": {
+      "node_ids": [
+        "n5",
+        "n1",
+        "n2",
+        "n3",
+        "n7"
+      ],
+      "edge_ids": [
+        "e4",
+        "e1",
+        "e2",
+        "e9"
+      ],
+      "coords": [
+        [
+          12.9296,
+          77.558
+        ],
+        [
+          12.9303,
+          77.5572
+        ],
+        [
+          12.931,
+          77.5562
+        ],
+        [
+          12.9317,
+          77.558
+        ],
+        [
+          12.9324,
+          77.5598
+        ],
+        [
+          12.9331,
+          77.5616
+        ],
+        [
+          12.9338,
+          77.5634
+        ],
+        [
+          12.9354,
+          77.5652
+        ],
+        [
+          12.9368,
+          77.567
+        ]
+      ],
+      "distance_km": 1.6,
+      "eta_min": 5.1,
+      "signals_on_route": 3,
+      "signal_wait_saved_s": 60,
+      "speed_basis": "15-min prediction (baseline model until ML service is connected)"
+    },
+    "time_saved_min": 1.0,
+    "signal_wait_source": "ASSUMED_FIXED_20S",
+    "assumptions": [
+      "Each red light costs 20 s without priority (fixed assumption until the signal optimizer is connected)",
+      "Emergency route avoids verified incidents and closed roads",
+      "Emergency route uses 15-minute predicted speeds"
+    ],
+    "created_at": "2026-11-10T03:31:12Z"
+  },
+  "error": null
+}

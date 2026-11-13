@@ -1,0 +1,123 @@
+{
+  "success": true,
+  "data": {
+    "simulation_id": 701,
+    "junction_id": "J-n2",
+    "mode": "optimize",
+    "cycles": 10,
+    "seed": 42,
+    "queues": [
+      {
+        "approach_id": "n2-e1",
+        "queue_now": 12,
+        "arrivals_per_min": 14.0
+      },
+      {
+        "approach_id": "n2-e2",
+        "queue_now": 6,
+        "arrivals_per_min": 7.0
+      },
+      {
+        "approach_id": "n2-e6",
+        "queue_now": 9,
+        "arrivals_per_min": 11.0
+      },
+      {
+        "approach_id": "n2-e7",
+        "queue_now": 15,
+        "arrivals_per_min": 9.0
+      }
+    ],
+    "current": {
+      "cycle_s": 140,
+      "phases": [
+        {
+          "approach_id": "n2-e1",
+          "green_s": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e2",
+          "green_s": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e6",
+          "green_s": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e7",
+          "green_s": 30,
+          "yellow_s": 3,
+          "all_red_s": 2
+        }
+      ],
+      "avg_wait_s": 48.2,
+      "max_queue": 21,
+      "throughput": 312
+    },
+    "optimized": {
+      "cycle_s": 140,
+      "phases": [
+        {
+          "approach_id": "n2-e1",
+          "green_s": 34,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e2",
+          "green_s": 18,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e6",
+          "green_s": 26,
+          "yellow_s": 3,
+          "all_red_s": 2
+        },
+        {
+          "approach_id": "n2-e7",
+          "green_s": 42,
+          "yellow_s": 3,
+          "all_red_s": 2
+        }
+      ],
+      "avg_wait_s": 36.9,
+      "max_queue": 14,
+      "throughput": 331
+    },
+    "improvement": {
+      "avg_wait_saved_s": 11.3,
+      "avg_wait_change_pct": -23.4,
+      "throughput_change_pct": 6.1
+    },
+    "reasons": [
+      {
+        "approach_id": "n2-e1",
+        "text": "Green longer (30s -> 34s): highest arrival rate (14 cars/min) on the main road."
+      },
+      {
+        "approach_id": "n2-e2",
+        "text": "Green shorter (30s -> 18s): lowest demand, 12% of junction arrivals."
+      },
+      {
+        "approach_id": "n2-e6",
+        "text": "Green slightly shorter (30s -> 26s): one-way couplet feeder, moderate demand."
+      },
+      {
+        "approach_id": "n2-e7",
+        "text": "Green much longer (30s -> 42s): incident upstream, largest queue (15 cars) needs clearance."
+      }
+    ],
+    "red_wait_saved_s": null,
+    "source": "SIMULATED",
+    "created_at": "2026-11-10T03:31:12Z"
+  },
+  "error": null
+}

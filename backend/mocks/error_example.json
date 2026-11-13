@@ -1,0 +1,14 @@
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "destination is required",
+    "details": [
+      {
+        "field": "destination",
+        "issue": "required"
+      }
+    ]
+  }
+}
