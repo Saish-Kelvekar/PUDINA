@@ -47,7 +47,7 @@ async function getSpeeds(time) {
     const r = bySegment.get(e.id);
     speeds.set(e.id, r ? r.speed_kmph : e.free_flow_kmph);
   }
-  return { step, speeds };
+  return { step, speeds, bySegmentHasData: bySegment }; // bySegmentHasData.has(id): real data for that road?
 }
 
 module.exports = { getFlow, getSpeeds };

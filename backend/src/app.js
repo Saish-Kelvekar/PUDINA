@@ -8,6 +8,8 @@ const mapRoutes = require("./routes/mapRoutes");
 const trafficRoutes = require("./routes/trafficRoutes");
 const routeRoutes = require("./routes/routeRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
+const predictionRoutes = require("./routes/predictionRoutes");
+const ml = require("./services/mlClient");
 
 const app = express();
 app.use(cors());          // lets the React app (another port) call us
@@ -19,10 +21,17 @@ app.use(express.json());  // reads JSON request bodies
 app.get("/api/health", async (req, res) => {
   try {
     await query("SELECT 1");
-    return ok(res, { status: "ok", database: "connected" });
   } catch (err) {
     return fail(res, 500, "INTERNAL_ERROR", "Database not reachable");
   }
+  let mlService;
+  try {
+    const h = await ml.health();
+    mlService = { status: "up", model_version: h.model_version };
+  } catch (err) {
+    mlService = { status: "down", reason: err.reason || err.message };
+  }
+  return ok(res, { status: "ok", database: "connected", ml_service: mlService });
 });
 
 app.use("/api/auth", authRoutes);
@@ -30,6 +39,7 @@ app.use("/api/map", mapRoutes);
 app.use("/api/traffic", trafficRoutes);
 app.use("/api/routes", routeRoutes);
 app.use("/api/incidents", incidentRoutes);
+app.use("/api/predictions", predictionRoutes);
 // New routes go here, above the 404 handler
 
 // ---------- 2. 404: no route matched ----------
