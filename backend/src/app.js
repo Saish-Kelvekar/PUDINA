@@ -5,6 +5,8 @@ const { query } = require("./config/db");
 const AppError = require("./utils/AppError");
 const authRoutes = require("./routes/authRoutes");
 const mapRoutes = require("./routes/mapRoutes");
+const trafficRoutes = require("./routes/trafficRoutes");
+const routeRoutes = require("./routes/routeRoutes");
 
 const app = express();
 app.use(cors());          // lets the React app (another port) call us
@@ -24,6 +26,8 @@ app.get("/api/health", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/map", mapRoutes);
+app.use("/api/traffic", trafficRoutes);
+app.use("/api/routes", routeRoutes);
 // New routes go here, above the 404 handler
 
 // ---------- 2. 404: no route matched ----------
