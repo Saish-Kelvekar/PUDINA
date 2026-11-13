@@ -1,9 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './index.html',
-    './src/**/*.{js,ts,jsx,tsx}',
-  ],
+  // relative: true = these paths are relative to this file, not to the folder the server was started from
+  content: {
+    relative: true,
+    files: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  },
   theme: {
     extend: {
       colors: {
