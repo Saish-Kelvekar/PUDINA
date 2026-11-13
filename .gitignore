@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.pyc
+
+# ML models / caches
+ml-service/models/
+*.joblib
+*.graphml
+
+# Node / env
+node_modules/
+.env
+.env.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
