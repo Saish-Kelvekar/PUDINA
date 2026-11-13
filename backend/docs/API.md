@@ -292,6 +292,22 @@ On `incident:verified`, re-fetch `/incidents` (and the route, if one is shown).
 
 **Demo picks** (sim time 09:00 IST): emergency trip **n2509 → n2563** (passes signals, ≈ 1.1 min saved); signal page **J-n2666** (120 → 63 s average wait).
 
+### 2.15 Live camera → Telegram (login required)
+| Method | Path | Body | Answer |
+|---|---|---|---|
+| GET | `/camera/status` | — | `{ telegram_configured, limits_mb: { photo: 10, video: 45 } }` |
+| POST | `/camera/photo` | raw file, `Content-Type: image/jpeg` or `image/png` | 201 `{ sent, kind, sent_as, size_kb, incident_id, telegram_message_id }` |
+| POST | `/camera/video` | raw file, `Content-Type: video/mp4` or `video/webm` | same as photo |
+
+Optional query on both POSTs: `?incident_id=12&note=text` (note ≤ 200 chars; the incident must exist).
+Without an incident: `&danger=low|medium|high&lat=12.93&lng=77.56` (lat/lng from the browser, sent together).
+The caption shows the **danger level** (incident: AI estimate, else reported; lanes blocked / road closed) and the
+**location** (nearest named road within 300 m + Google Maps link). A Telegram map pin (`sendLocation`) is sent as a reply.
+The answer also has `danger_level`, `location { lat, lng, road, maps_url }` and `map_pin_sent`.
+MP4 goes out as a Telegram video, WebM as a file. Errors: 400 VALIDATION_ERROR (wrong type, empty, too big),
+404 NOT_FOUND (incident), 503 TELEGRAM_NOT_CONFIGURED, 502 TELEGRAM_FAILED.
+Needs `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `backend/.env` (never committed).
+
 ## 3. Member 3's side
 
 Everything Member 3 needs (graph and CSV rules, ML service requests and responses, seed data) is in **`backend/docs/CONTRACT_M3.md`**. Approach IDs are `<node id>-<edge id>`, e.g. `n2-e1`; junction IDs are `J-<node id>`, e.g. `J-n2`.
