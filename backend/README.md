@@ -12,12 +12,33 @@
 
 The Express code (`src/routes`, `src/controllers`, `src/services`, `src/repositories`) comes in Phase 1.
 
-## Commands (from the repo root)
+## Commands (run inside backend/)
 
 ```bash
-# rebuild the mocks after M3 changes a sample file
-python backend/scripts/make_mocks.py
+npm install                       # once
+npm run dev                       # start API + Socket.IO on http://localhost:5000
+npm test                          # unit tests (no database needed)
+npm run test:db                   # check the database connection
 
-# create the tables (Phase 1, once PostgreSQL is installed)
-psql "postgresql://postgres:<password>@localhost:5432/trafficvision" -f backend/migrations/001_init.sql
+# database, in this order (once, or after the data changes)
+psql -U postgres -d trafficvision -f migrations/001_init.sql
+node scripts/load-graph.js        # roads from GRAPH_PATH
+node scripts/load-traffic.js      # traffic from TRAFFIC_PATH
+node scripts/seed-demo.js --reset # demo users + incidents (fresh demo)
+
+python scripts/make_mocks.py      # rebuild mocks (from the repo root: python backend/scripts/make_mocks.py)
 ```
+
+## .env
+
+```
+PORT=5000
+DATABASE_URL=postgresql://postgres:<password>@localhost:5432/trafficvision
+JWT_SECRET=<any long random text>
+ML_SERVICE_URL=http://localhost:8000
+SIM_START=2026-11-10T03:30:00Z
+GRAPH_PATH=../data/graph.json
+TRAFFIC_PATH=../data/traffic.csv
+```
+
+The API is described in `docs/API.md`. If M3's ML service is not running, predictions use the baseline and emergency routing assumes 20 s per red light; only `/signals/simulate` needs it.

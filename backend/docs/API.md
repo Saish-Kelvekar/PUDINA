@@ -27,6 +27,7 @@ The mocks are generated from Member 3's `data/sample/graph.json` and `data/sampl
 | `NOT_FOUND` | 404 | Unknown id |
 | `CONFLICT` | 409 | Email already registered; action not allowed in current status (e.g. verify a rejected incident) |
 | `NO_ROUTE` | 422 | No path between the two points (e.g. all roads closed) |
+| `ML_UNAVAILABLE` | 503 | Signal optimizer (M3) not running or too slow. Only `/signals/simulate` returns this; everything else falls back |
 | `INTERNAL_ERROR` | 500 | Anything else |
 
 **Auth:** send `Authorization: Bearer <token>`. Roles: `user`, `admin`, `emergency`. The token lasts 12 hours.
@@ -215,40 +216,53 @@ If the ML service is down: `{ model_version: "baseline", available: false, fallb
 
 ### 2.10 Signals
 
-`GET /signals/junctions` returns `{ junctions: [ { junction_id, node_id, name, lat, lng, approaches: [ { approach_id, edge_id, from_node, label } ], current_timing: { cycle_s, green_s_each, yellow_s, all_red_s }, source } ] }`.
+`GET /signals/junctions` (login) returns `{ junctions: [ { junction_id, node_id, name, lat, lng, approaches: [ { approach_id, edge_id, from_node, label } ], current_timing: { cycle_s, green_s_each, yellow_s, all_red_s }, source } ] }`. One per signalised junction in the graph (10 in M3's real data). An approach is a road you can drive **into** the junction on; its id is `<node>-<edge>`, the same rule M3 uses.
 
-`POST /signals/simulate` body `{ "junction_id": "J-n2", "mode": "optimize", "cycles": 10, "seed": 42 }`. For emergency mode add `"emergency_approach_id": "n2-e1"`.
-Returns `{ simulation_id, junction_id, mode, cycles, seed, queues: [ { approach_id, queue_now, arrivals_per_min } ], current: { cycle_s, phases: [ { approach_id, green_s, yellow_s, all_red_s } ], avg_wait_s, max_queue, throughput }, optimized: { same shape }, improvement: { avg_wait_saved_s, avg_wait_change_pct, throughput_change_pct }, reasons: [ { approach_id, text } ], source: "SIMULATED", created_at }`. Emergency mode adds `red_wait_saved_s`.
-The backend forwards to M3's `/signals/optimize` and saves the result in `signal_simulations`. Each green is between 10 and 60 s; 3 s yellow + 2 s all-red per phase.
+`POST /signals/simulate` (login) body `{ "junction_id": "J-n1024", "mode": "optimize", "cycles": 10, "seed": 42 }`. Only `junction_id` is required. For emergency mode add `"mode": "emergency", "emergency_approach_id": "n1024-e42"` (must be one of that junction's approaches).
+Returns M3's answer with a few additions: `{ simulation_id, junction_id, junction_name, as_of_utc, mode, cycles, seed, queues: [ { approach_id, queue_now, arrivals_per_min } ], current: { cycle_s, phases: [ { approach_id, green_s, yellow_s, all_red_s } ], avg_wait_s, max_queue, throughput }, optimized: { same shape }, improvement: { avg_wait_saved_s, avg_wait_change_pct, throughput_change_pct }, reasons: [ { approach_id, text } ], red_wait_saved_s, source: "SIMULATED", created_at }`.
+`as_of_utc` is the traffic step at the simulation time. Every run is saved in `signal_simulations`. If M3's service is down → **503 `ML_UNAVAILABLE`** (show a clear message; there is no fake fallback for this page). Unknown junction → `NOT_FOUND`.
 
 ### 2.11 `POST /emergency/routes`
 
-Body `{ "vehicle_type": "ambulance", "source": {...point}, "destination": {...point} }`. `vehicle_type`: `ambulance`, `fire`, `police`.
-Returns `{ session_id, vehicle_type, simulation: true, source: "SIMULATED", from, to, normal_route, emergency_route, time_saved_min, signal_wait_source, assumptions, created_at }`.
+Roles: `emergency` or `admin`. Body `{ "vehicle_type": "ambulance", "source": {...point}, "destination": {...point} }`. `vehicle_type`: `ambulance`, `fire`, `police`.
+Returns `{ session_id, vehicle_type, simulation: true, source: "SIMULATED", sim_time_utc, from, to, normal_route, emergency_route, time_saved_min, signal_wait_source, assumptions, created_at }`.
 
-- `normal_route`: fastest route on current speeds, with red-light waits.
-- `emergency_route`: uses 15-min predicted speeds, avoids verified incidents and closures, no red waits; has `signal_wait_saved_s`.
-- `time_saved_min` = normal ETA − emergency ETA.
-- `signal_wait_source`: `"ASSUMED_FIXED_20S"` (stand-in) until M3's optimizer is connected, then `"SIGNAL_OPTIMIZER"`. M1 shows the `assumptions` list under the result.
+- `normal_route`: fastest route on **current** speeds; waits at each red light. Has `signals: [ { node_id, name, edge_id, red_wait_s, source } ]`.
+- `emergency_route`: **15-minute predicted** speeds (M3's model, or the baseline if it is down), **never uses a road with a verified incident** (if there is no other way it passes one, `avoided_all_incidents: false`), closed roads always avoided, **green light at every signal**. Has `signals: [ { node_id, name, edge_id, red_wait_saved_s, source } ]` and `signal_wait_saved_s` (total red wait it skipped).
+- Both have `node_ids, edge_ids, coords, distance_km, eta_min, eta_s, signals_on_route, speed_basis`.
+- Red-light wait per junction = M3's `/signals/optimize` in emergency mode for the approach used (`red_wait_saved_s`). If M3 can't answer: 20 s each. `signal_wait_source` is `"SIGNAL_OPTIMIZER"` only if every wait came from M3, otherwise `"ASSUMED_FIXED_20S"`.
+- `time_saved_min` = normal ETA − emergency ETA. M1 shows the `assumptions` list and a "SIMULATION" banner. Every request is saved in `emergency_sessions`.
+- **Demo tip:** only 10 junctions have signals, so most trips pass none. Use a trip through signals, e.g. **n2509 → n2563** (≈ 1.1 min saved).
 
-### 2.12 Admin data
+### 2.12 Admin data (admin only)
 
-`GET /admin/overview` returns `{ counts: { incidents_total, pending, verified, rejected, merged, resolved, active_closures, duplicate_candidates, users }, recent_actions: [...], ml_service: { status: "up" | "down", model_version }, sim_time_utc }`.
+`GET /admin/overview` returns `{ counts: { incidents_total, pending, verified, rejected, merged, resolved, active_closures, duplicate_candidates, users, users_by_role }, recent_actions: [ { id, incident_id, action, details, by: { id, name }, created_at } ] (last 10), ml_service: { status: "up", model_version } | { status: "down", reason }, sim_time_utc }`.
 
-`GET /admin/analytics` returns `{ congestion_by_hour: [ { hour_ist, avg_speed_ratio, heavy_or_severe_share } ], incidents_by_type: [ { category, count } ], prediction_error: { "15": {...}, "30": {...} }, signal_improvement: [ { junction_id, name, avg_wait_before_s, avg_wait_after_s } ], emergency_time_saved: { sessions, avg_saved_min, total_saved_min }, source_note, generated_at }`.
+`GET /admin/analytics` returns:
+- `congestion_by_hour: [ { hour_ist, avg_speed_ratio, heavy_or_severe_share, samples } ]`: from all traffic data (cached after the first call)
+- `incidents_by_type: [ { category, count } ]`: excludes rejected and merged
+- `prediction_error: { "15": { mae_model_kmph, mae_baseline_kmph, improvement_pct }, "30": {...} }` and `prediction_model` (both `null` if the ML service is down)
+- `signal_improvement: [ { junction_id, name, avg_wait_before_s, avg_wait_after_s, improvement_pct } ]`: latest optimize run per junction (only junctions someone simulated)
+- `emergency_time_saved: { sessions, avg_saved_min, total_saved_min }`
+- `source_note`, `generated_at`
 
 ### 2.13 Socket.IO events
 
-Connect to the same server (`http://localhost:5000`). Server → client only.
+Same server and port: `io("http://localhost:5000")`. Server → client only.
 
 | Event | Payload | When |
 | --- | --- | --- |
+| `hello` | `{ message }` | right after connecting |
 | `incident:new` | `{ incident }` | any new report |
-| `incident:verified` | `{ incident }` | admin verifies one |
+| `incident:verified` | `{ incident }` | admin verifies one (routes now avoid it) |
 
-On `incident:verified`, the frontend should re-fetch `/incidents` (and the route, if one is shown).
+On `incident:verified`, re-fetch `/incidents` (and the route, if one is shown).
 
----
+### 2.14 Demo data ⭐
+
+`node scripts/seed-demo.js --reset` (in `backend/`) loads M3's `data/seed/users.json` and `incidents.json`: 3 users (`user@demo.test`, `admin@demo.test`, `ems@demo.test`, password `demo123`) and 15 incidents placed on real roads, with severity estimated and the 2 near-duplicate pairs detected. `--reset` deletes all incidents first. Without it, users are updated and incidents are skipped if any exist.
+
+**Demo picks** (sim time 09:00 IST): emergency trip **n2509 → n2563** (passes signals, ≈ 1.1 min saved); signal page **J-n2666** (120 → 63 s average wait).
 
 ## 3. Member 3's side
 
