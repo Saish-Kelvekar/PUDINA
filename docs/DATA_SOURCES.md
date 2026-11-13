@@ -46,9 +46,21 @@ Resulting level mix (approx.): flowing 499k · moderate 53k · heavy 45k · seve
 
 Kept for continuity. Tiny hand-made stand-in (8 nodes/10 edges, 50 rows) created in Phase 0. Replaced everywhere now by the real files; kept in-repo so M1/M2 diffs stay meaningful.
 
-## Phase 2 note (to be implemented with the model)
+## Phase 2 model card (rf-v1)
 
-Confidence for `/predict` will come from the spread of the individual trees (`HistGradientBoostingRegressor` / `RandomForestRegressor`): trees' predicted speeds are normalised to a 0–1 score via `1 − min(1, IQR_or_std_of_tree_predictions / free_flow)`, documented here when the model lands.
+- **Task**: predict segment speed 15 and 30 minutes ahead (two targets, two models).
+- **Algorithms**: `RandomForestRegressor` per horizon — 150 trees, `max_depth=18`, `min_samples_leaf=5`, `n_jobs=-1`, `random_state=20261113`. RandomForest chosen over HistGradientBoosting because it exposes per-tree predictions, required for the confidence score.
+- **Features** (all from `traffic.csv` + `graph.json`): `hour_ist`, `dow` (Mon=0), `weekend`, `speed_now`, `speed_lag15`, `speed_lag30`, `free_flow_kmph`, `lanes`, `rain`, `incident`, `neighbour_speed_now` = mean current speed of **primary edges sharing a node** with this segment (all 147 primaries have ≥ 1 primary neighbour, mean 2.29).
+- **Split**: chronological — train ≤ 2026-11-08T23:45:00Z (493,626 rows after lag drops), test 2026-11-09T00:00:00Z .. 2026-11-15T23:15:00Z (98,490 rows). Week 6 (2026-11-09..15) is the test week, never trained on.
+- **Baseline**: "speed later = speed now", reported alongside for an honest comparison.
+- **Results (test week, MAE km/h, level accuracy)**:
+  - ~15 min: baseline 2.0 → **rf-v1 1.1** (+44.7%), level accuracy **0.98** vs baseline 0.92
+  - ~30 min: baseline 2.8 → **rf-v1 1.1** (+60.9%), level accuracy **0.98** vs baseline 0.86
+- **Artefacts**: `ml-service/models/rf_15.joblib`, `rf_30.joblib` — **gitignored, reproducible** (re-run `ml-service/scripts/train_model.py` with the same seed and input data). Only the script and `ml-service/metrics.json` are committed.
+- **Confidence formula** (used by the FastAPI service in Phase 3): per segment, take the per-tree predictions, compute their population std `σ`, then
+  `confidence = 1 − min(1, σ / free_flow_kmph)`, rounded to 2 decimals. A spread that is small relative to free-flow → high confidence.
+- **Level thresholds** (shared with the CSV): `flowing` > 0.75 · `moderate` 0.50–0.75 · `heavy` 0.25–0.50 · `severe` < 0.25.
+- **Known limits**: `incident` positives are rare (118 rows) so incident weight is small by construction; week 6 congestion is deliberately light (all simulated); the model predicts *this segment* only — no graph-wide propagation yet.
 
 ## Licensing / attribution
 

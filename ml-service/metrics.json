@@ -1,0 +1,25 @@
+{
+  "model_version": "rf-v1",
+  "trained_on": "2026-10-05 to 2026-11-08",
+  "tested_on": "2026-11-09 to 2026-11-15",
+  "split": "time-based",
+  "horizons": {
+    "15": {
+      "mae_model_kmph": 1.1,
+      "mae_baseline_kmph": 2.0,
+      "improvement_pct": 44.7,
+      "level_accuracy_model": 0.98,
+      "level_accuracy_baseline": 0.92,
+      "test_rows": 98490
+    },
+    "30": {
+      "mae_model_kmph": 1.1,
+      "mae_baseline_kmph": 2.8,
+      "improvement_pct": 60.9,
+      "level_accuracy_model": 0.98,
+      "level_accuracy_baseline": 0.86,
+      "test_rows": 98490
+    }
+  },
+  "series": null
+}
