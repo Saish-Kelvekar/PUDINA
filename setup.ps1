@@ -134,6 +134,10 @@ if ($hasTables.Trim() -ne "t") {
 } else {
   Write-Ok "Tables already exist"
 }
+# Later migrations only add things and are safe to run every time
+Invoke-Psql $DbName @("-f", (Join-Path $Backend "migrations\002_route_history.sql"))
+Assert-LastExit "Running migrations\002_route_history.sql"
+Write-Ok "Route search history columns ready"
 
 # ---------------------------------------------------------------------------
 Write-Step "Writing backend\.env"

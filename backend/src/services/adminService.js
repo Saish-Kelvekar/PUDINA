@@ -2,6 +2,7 @@
 const { query } = require("../config/db");
 const ml = require("./mlClient");
 const simClock = require("./simClock");
+const graphService = require("./graphService");
 
 let congestionCache = null; // traffic data never changes while the server runs
 
@@ -59,8 +60,38 @@ async function congestionByHour() {
   return congestionCache;
 }
 
+// What users search and which route they pick (route search history, migration 002)
+async function routeUsage() {
+  const [totals, byType, trips] = await Promise.all([
+    query(`SELECT count(*)::int AS searches,
+                  count(chosen_route_id)::int AS chosen,
+                  count(*) FILTER (WHERE chosen_route_id IS NOT NULL AND chosen_route_id = (
+                    SELECT r->>'route_id' FROM jsonb_array_elements(routes) r
+                    WHERE (r->>'recommended')::boolean LIMIT 1))::int AS followed
+           FROM route_comparisons`),
+    query(`SELECT chosen_type AS type, count(*)::int AS count FROM route_comparisons
+           WHERE chosen_type IS NOT NULL GROUP BY 1 ORDER BY 2 DESC, 1`),
+    query(`SELECT source_node, dest_node, count(*)::int AS searches, count(chosen_route_id)::int AS chosen
+           FROM route_comparisons GROUP BY 1, 2 ORDER BY 3 DESC, 1, 2 LIMIT 5`),
+  ]);
+  const t = totals.rows[0];
+  const name = (id) => (graphService.getNode(id) || {}).name || id;
+  return {
+    searches: t.searches,
+    chosen: t.chosen,
+    followed_recommendation: t.followed,
+    followed_pct: t.chosen ? Math.round((1000 * t.followed) / t.chosen) / 10 : null,
+    chosen_by_type: byType.rows,
+    top_trips: trips.rows.map((r) => ({
+      source: { node_id: r.source_node, name: name(r.source_node) },
+      destination: { node_id: r.dest_node, name: name(r.dest_node) },
+      searches: r.searches, chosen: r.chosen,
+    })),
+  };
+}
+
 async function analytics() {
-  const [hours, byType, signals, emergency, metrics] = await Promise.all([
+  const [hours, byType, signals, emergency, metrics, usage] = await Promise.all([
     congestionByHour(),
     query(`SELECT category, count(*)::int AS count FROM incidents
            WHERE status NOT IN ('rejected', 'merged') GROUP BY category ORDER BY count DESC, category`),
@@ -71,6 +102,7 @@ async function analytics() {
     query(`SELECT count(*)::int AS sessions, coalesce(avg(time_saved_s), 0)::float AS avg_s, coalesce(sum(time_saved_s), 0)::float AS total_s
            FROM emergency_sessions`),
     ml.metrics().catch(() => null),
+    routeUsage(),
   ]);
   const r1 = (x) => Math.round(x * 10) / 10;
   const e = emergency.rows[0];
@@ -87,6 +119,7 @@ async function analytics() {
       improvement_pct: s.avg_wait_before_s ? r1((100 * (s.avg_wait_before_s - s.avg_wait_after_s)) / s.avg_wait_before_s) : null,
     })),
     emergency_time_saved: { sessions: e.sessions, avg_saved_min: r1(e.avg_s / 60), total_saved_min: r1(e.total_s / 60) },
+    route_usage: usage,
     source_note: "Traffic is SIMULATED. Prediction error comes from M3's test week. Signal and emergency numbers come from simulations run in this app.",
     generated_at: new Date().toISOString(),
   };

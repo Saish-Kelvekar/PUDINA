@@ -22,6 +22,7 @@ npm run test:db                   # check the database connection
 
 # database, in this order (once, or after the data changes)
 psql -U postgres -d trafficvision -f migrations/001_init.sql
+psql -U postgres -d trafficvision -f migrations/002_route_history.sql   # safe to re-run
 node scripts/load-graph.js        # roads from GRAPH_PATH
 node scripts/load-traffic.js      # traffic from TRAFFIC_PATH
 node scripts/seed-demo.js --reset # demo users + incidents (fresh demo)   = npm run seed

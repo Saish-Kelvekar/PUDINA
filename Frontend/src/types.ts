@@ -79,6 +79,12 @@ export interface RouteResult {
 }
 
 export interface RouteComparison {
+  /** History id of this search (every compare is saved for the logged-in user). */
+  comparison_id?: number;
+  /** true when this was opened from the search history instead of calculated now. */
+  saved?: boolean;
+  created_at?: string;
+  chosen_route_id?: string | null;
   routes: RouteResult[];
   recommended_route_id: string | null;
   source: { node_id: string; name: string; lat: number; lng: number; snapped_m: number };
@@ -248,8 +254,54 @@ export interface Analytics {
   prediction_model: string | null;
   signal_improvement: Array<{ junction_id: string; name: string; avg_wait_before_s: number; avg_wait_after_s: number; improvement_pct: number | null }>;
   emergency_time_saved: { sessions: number; avg_saved_min: number; total_saved_min: number };
+  route_usage?: RouteUsage;
   source_note: string;
   generated_at: string;
+}
+
+export interface RouteBrief {
+  route_id: string;
+  type: string;
+  label: string;
+  rank: number;
+  eta_min: number;
+  distance_km: number;
+  score: number;
+}
+
+export interface HistoryPlace {
+  node_id: string;
+  /** Friendly label (streets meeting there). */
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface RouteHistoryItem {
+  id: number;
+  created_at: string;
+  sim_time_utc: string | null;
+  source: HistoryPlace;
+  destination: HistoryPlace;
+  route_count: number;
+  recommended: RouteBrief | null;
+  chosen: (RouteBrief & { chosen_at: string | null; followed_recommendation: boolean }) | null;
+}
+
+export interface RouteHistoryPage {
+  total: number;
+  limit: number;
+  offset: number;
+  items: RouteHistoryItem[];
+}
+
+export interface RouteUsage {
+  searches: number;
+  chosen: number;
+  followed_recommendation: number;
+  followed_pct: number | null;
+  chosen_by_type: Array<{ type: string; count: number }>;
+  top_trips: Array<{ source: { node_id: string; name: string }; destination: { node_id: string; name: string }; searches: number; chosen: number }>;
 }
 
 export interface SimClock {

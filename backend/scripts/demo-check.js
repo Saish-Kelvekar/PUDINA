@@ -78,6 +78,22 @@ const midpoint = (edge) => {
   const shortestKm = Math.min(...distOnly.data.routes.map((r) => r.distance_km));
   check(distOnly.data.routes[0].distance_km === shortestKm, "distance-only weights put the shortest route first");
 
+  // ---------- 2b. search history ----------
+  step("2b. Search history: saved searches, \"use this route\", private per user");
+  const firstId = cmp.data.comparison_id;
+  const pick = routes.find((r) => !r.recommended) || routes[0];
+  const chose = await call("POST", `/routes/history/${firstId}/choose`, { token: user, body: { route_id: pick.route_id } });
+  check(chose.data?.item.chosen?.route_id === pick.route_id,
+    `chose "${pick.label}" (followed recommendation: ${chose.data?.item.chosen?.followed_recommendation})`, `choose failed: ${chose.error?.message}`);
+  const hist = (await call("GET", "/routes/history?limit=5", { token: user })).data;
+  check(hist?.items[0]?.id === distOnly.data.comparison_id && hist.items.some((i) => i.id === firstId && i.chosen),
+    `history lists ${hist?.total} search(es), newest first, with the chosen route`);
+  const saved = (await call("GET", `/routes/history/${firstId}`, { token: user })).data;
+  check(saved?.saved && saved.routes.length === routes.length && saved.chosen_route_id === pick.route_id,
+    "a saved search opens again with all its routes and the choice");
+  check((await call("GET", `/routes/history/${firstId}`, { token: admin })).status === 404, "another user cannot see this search");
+  check((await call("DELETE", `/routes/history/${distOnly.data.comparison_id}`, { token: user })).data?.deleted === 1, "a search can be deleted from history");
+
   // ---------- 3. report the same accident twice ----------
   step("3. Report an accident on the recommended route, then again from a second account");
   const rec = routes[0];
@@ -164,6 +180,8 @@ const midpoint = (edge) => {
   const an = (await call("GET", "/admin/analytics", { token: admin })).data;
   check(an?.congestion_by_hour.length === 24, `congestion by hour: 24 hours (busiest share ${Math.max(...(an?.congestion_by_hour || [{}]).map((h) => h.heavy_or_severe_share || 0))})`);
   check(an?.incidents_by_type.length > 0 && an?.emergency_time_saved.sessions > 0, "incidents by type and emergency time saved are filled");
+  check(an?.route_usage?.searches > 0 && an.route_usage.chosen > 0 && an.route_usage.top_trips.length > 0,
+    `route usage: ${an?.route_usage?.searches} searches, ${an?.route_usage?.chosen} with a chosen route, ${an?.route_usage?.followed_pct}% followed the recommendation`);
   const events = await live.stop();
   if (events === null) warn("live alerts not checked (run: npm install --save-dev socket.io-client)");
   else {

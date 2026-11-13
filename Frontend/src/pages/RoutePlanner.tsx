@@ -3,9 +3,10 @@ import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/api/api';
-import type { EdgeCongestion, RouteResult } from '@/types';
+import type { EdgeCongestion, RouteResult, RouteHistoryItem } from '@/types';
 import { formatETA, congestionColor, congestionLabel } from '@/lib/colors';
-import { Sparkles, ArrowUpDown, Fuel, AlertTriangle, ShieldCheck, TrafficCone, Info } from 'lucide-react';
+import { Sparkles, ArrowUpDown, Fuel, AlertTriangle, ShieldCheck, TrafficCone, Info, CheckCircle2, Navigation, History } from 'lucide-react';
+import { RecentSearches } from '@/components/RecentSearches';
 import { MapStage, MapChip } from '@/components/layout/MapStage';
 import { PageHeading } from '@/components/layout/PageHeading';
 import {
@@ -17,7 +18,7 @@ import {
   nextPicks,
   toRoutePoint,
 } from '@/components/RoutePointPicker';
-import { cn } from '@/lib/utils';
+import { cn, istDateTime, istTime } from '@/lib/utils';
 
 export default function RoutePlanner() {
   const { add } = useToast() as any;
@@ -28,29 +29,49 @@ export default function RoutePlanner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Search history: the saved search on screen, the route the user chose, and whether it is an old one
+  const [comparisonId, setComparisonId] = useState<number | null>(null);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ created_at?: string; sim_time_utc?: string } | null>(null);
+  const [historyKey, setHistoryKey] = useState(0);
+  const [choosing, setChoosing] = useState(false);
 
   useEffect(() => {
     apiClient.getTrafficFlow().then(setEdges).catch(() => {});
   }, []);
 
+  const clearResult = () => {
+    setRoutes([]);
+    setComparisonId(null);
+    setChosenId(null);
+    setSaved(null);
+  };
+
   const setPoints = (a: PickedPoint | null, b: PickedPoint | null) => {
     setFrom(a);
     setTo(b);
-    setRoutes([]);
+    clearResult();
     setError(null);
   };
 
-  const fetchRoutes = useCallback(async () => {
-    if (!from || !to) {
+  /** Calculates routes now. `a`/`b` override the picked points (used by "Search again"). */
+  const fetchRoutes = useCallback(async (a?: PickedPoint, b?: PickedPoint) => {
+    const start = a ?? from;
+    const end = b ?? to;
+    if (!start || !end) {
       setError('Pick a start (A) and a destination (B) — click the map or use a quick pick.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const data = await apiClient.compareRoutes(toRoutePoint(from), toRoutePoint(to));
+      const data = await apiClient.compareRoutes(toRoutePoint(start), toRoutePoint(end));
       setRoutes(data.routes);
       setSelectedId(data.recommended_route_id ?? data.routes[0]?.id ?? null);
+      setComparisonId(data.comparison_id ?? null);
+      setChosenId(null);
+      setSaved(null);
+      setHistoryKey((k) => k + 1); // the new search appears in Recent searches
     } catch (err: any) {
       setRoutes([]);
       setError(err.message || 'Failed to calculate routes');
@@ -70,6 +91,64 @@ export default function RoutePlanner() {
     setPoints(a, b);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, add]);
+
+  /** "Use this route": saves the choice in the search history. Clicking the chosen route again un-chooses it. */
+  const chooseRoute = async (r: RouteResult) => {
+    if (!comparisonId || !r.id || choosing) return;
+    const next = chosenId === r.id ? null : r.id;
+    setChoosing(true);
+    try {
+      await apiClient.chooseRoute(comparisonId, next);
+      setChosenId(next);
+      setSelectedId(r.id);
+      setHistoryKey((k) => k + 1);
+      if (next) add?.('success', `Using: ${r.label}`, r.recommended ? 'You followed the recommendation.' : 'Saved as your choice in Recent searches.');
+    } catch (err: any) {
+      add?.('error', 'Could not save your choice', err.message);
+    } finally {
+      setChoosing(false);
+    }
+  };
+
+  const pointOf = (p: { node_id: string; name: string; lat: number; lng: number }): PickedPoint =>
+    ({ node_id: p.node_id, label: p.name, lat: p.lat, lng: p.lng });
+
+  /** Shows a saved search exactly as it was calculated (old traffic). */
+  const viewSaved = async (item: RouteHistoryItem) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiClient.getSavedSearch(item.id);
+      setFrom(pointOf(data.source));
+      setTo(pointOf(data.destination));
+      setRoutes(data.routes);
+      setComparisonId(data.comparison_id ?? item.id);
+      setChosenId(data.chosen_route_id ?? null);
+      setSelectedId(data.chosen_route_id ?? data.recommended_route_id ?? data.routes[0]?.id ?? null);
+      setSaved({ created_at: data.created_at, sim_time_utc: data.sim_time_utc });
+    } catch (err: any) {
+      add?.('error', 'Could not open the saved search', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Same trip again, with the current traffic (creates a new history entry). */
+  const searchAgain = (item: RouteHistoryItem) => {
+    const a = pointOf(item.source);
+    const b = pointOf(item.destination);
+    setFrom(a);
+    setTo(b);
+    fetchRoutes(a, b);
+  };
+
+  const onHistoryDeleted = (id: number | 'all') => {
+    if (id === 'all' || id === comparisonId) {
+      // the search on screen no longer exists in the history: keep the routes, but no choosing on it
+      setComparisonId(null);
+      setChosenId(null);
+    }
+  };
 
   // Highlight the selected card's route on the map; dim the rest.
   const mapRoutes = useMemo(
@@ -116,7 +195,7 @@ export default function RoutePlanner() {
           <RoutePointPicker from={from} to={to} onChange={setPoints} defaults={{ from: 'n2509', to: 'n2563' }} />
 
           <div className="flex gap-2">
-            <Button onClick={fetchRoutes} variant="primary" size="lg" className="flex-1" loading={loading}>
+            <Button onClick={() => fetchRoutes()} variant="primary" size="lg" className="flex-1" loading={loading}>
               <Sparkles className="mr-2 h-4 w-4" /> Compare routes
             </Button>
             <button
@@ -137,10 +216,30 @@ export default function RoutePlanner() {
             </div>
           )}
 
+          {saved && (
+            <div className="flex gap-2 rounded-2xl border border-bronze/30 bg-bronze/10 px-4 py-3 text-xs text-ink">
+              <History className="mt-0.5 h-3.5 w-3.5 shrink-0 text-bronze" />
+              <span>
+                Saved search from {istDateTime(saved.created_at)}, calculated for traffic at {istTime(saved.sim_time_utc)} IST.{' '}
+                <button type="button" onClick={() => fetchRoutes()} className="font-semibold text-bronze underline-offset-2 hover:underline">
+                  Search again with current traffic
+                </button>
+              </span>
+            </div>
+          )}
+
           <p className="flex gap-2 px-1 text-[11px] leading-relaxed text-ink-faint">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Clicked points snap to the nearest junction (within 300 m). Traffic is simulated.
           </p>
+
+          <RecentSearches
+            refreshKey={historyKey}
+            activeId={comparisonId}
+            onView={viewSaved}
+            onSearchAgain={searchAgain}
+            onDeleted={onHistoryDeleted}
+          />
         </>
       }
       bottom={
@@ -159,13 +258,24 @@ export default function RoutePlanner() {
             {routes.map((r) => {
               const isSel = selectedId === r.id;
               const twin = r.same_path_as ? routes.find((x) => x.id === r.same_path_as) : null;
+              const isChosen = !!r.id && chosenId === r.id;
               return (
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   key={r.id ?? r.label}
                   onClick={() => setSelectedId(r.id ?? null)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedId(r.id ?? null);
+                    }
+                  }}
+                  aria-pressed={isSel}
                   className={cn(
+                    'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-bronze',
                     'w-[300px] shrink-0 rounded-3xl p-5 text-left transition-all duration-200',
+                    isChosen && 'ring-2 ring-traffic-green',
                     isSel ? 'glass-dark' : 'glass hover:-translate-y-0.5',
                   )}
                 >
@@ -230,7 +340,29 @@ export default function RoutePlanner() {
                       {r.closure_warnings.join(' · ')}
                     </div>
                   )}
-                </button>
+
+                  {comparisonId && r.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        chooseRoute(r);
+                      }}
+                      disabled={choosing}
+                      className={cn(
+                        'mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition-colors disabled:opacity-50',
+                        isChosen
+                          ? 'bg-traffic-green text-white hover:bg-traffic-green/90'
+                          : isSel
+                            ? 'bg-white/15 text-sand-50 hover:bg-white/25'
+                            : 'bg-ink text-sand-50 hover:bg-ink/85',
+                      )}
+                      title={isChosen ? 'Click again to un-choose' : 'Save this as the route you used'}
+                    >
+                      {isChosen ? <><CheckCircle2 className="h-3.5 w-3.5" /> Using this route</> : <><Navigation className="h-3.5 w-3.5" /> Use this route</>}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

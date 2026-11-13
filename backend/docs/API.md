@@ -66,6 +66,11 @@ The mocks are generated from Member 3's `data/sample/graph.json` and `data/sampl
 | 2.3 | GET | `/traffic/clock` ⭐ | public | — |
 | 2.3 | POST | `/traffic/clock` ⭐ | admin | — |
 | 2.4 | POST | `/routes/compare` | any | `routes_compare.json` |
+| 2.4b | GET | `/routes/history` ⭐ | any | `routes_history_list.json` |
+| 2.4b | GET | `/routes/history/:id` ⭐ | any | `routes_history_get.json` |
+| 2.4b | POST | `/routes/history/:id/choose` ⭐ | any | `routes_history_choose.json` |
+| 2.4b | DELETE | `/routes/history/:id` ⭐ | any | `routes_history_delete.json` |
+| 2.4b | DELETE | `/routes/history` ⭐ | any | `routes_history_delete.json` |
 | 2.5 | POST | `/incidents` | any | `incident_create.json` |
 | 2.5 | GET | `/incidents` | public | `incidents_list.json` |
 | 2.5 | GET | `/incidents/:id` | public | `incident_get.json` |
@@ -147,6 +152,29 @@ Edge cost rules: travel time = length ÷ speed, plus 20 s at each signalised jun
 Per type: **fastest** = time · **shortest** = metres · **least_congested** = time × (1 + 3 × (1 − speed ratio)) · **safest** = time + 5 × incident delay + 120 s per incident · **eco** = fuel.
 
 Needs login. Errors: `VALIDATION_ERROR` (bad points or weights, or source = destination), `NOT_FOUND` (unknown `node_id`), `NO_ROUTE` (422) if no path. Every comparison is saved in `route_comparisons`.
+
+### 2.4b Route search history ⭐
+
+Every `POST /routes/compare` is saved automatically for the logged-in user (`comparison_id` in its answer is the history id). These endpoints always work on **your own** history only: someone else's id gives `NOT_FOUND`. Needs login. Requires migration `002_route_history.sql`.
+
+`GET /routes/history?limit=20&offset=0` (limit 1–100) returns `{ total, limit, offset, items: [...] }`, newest first. Each item is short (no map lines):
+```
+{ id, created_at, sim_time_utc,
+  source: { node_id, name, lat, lng }, destination: { node_id, name, lat, lng },
+  weights, route_count,
+  recommended: { route_id, type, label, rank, eta_min, distance_km, score },
+  chosen: null | { route_id, type, label, rank, eta_min, distance_km, score, chosen_at, followed_recommendation } }
+```
+
+`GET /routes/history/:id` returns the saved search in the **same shape as `/routes/compare`** (`routes` with `coords`, `recommended_route_id`, …) plus `saved: true`, `created_at`, `chosen_route_id`, `chosen_at`, so the Route Planner can show it with its normal route cards. It shows the routes **as they were at `sim_time_utc`**. To get today's traffic, call `/routes/compare` again with the same `source.node_id` / `destination.node_id` ("Search again").
+
+`POST /routes/history/:id/choose` body `{ "route_id": "r2" }` marks that route as the one the user used (**"Use this route"** button). Send `{ "route_id": null }` to clear it. Choosing again replaces the old choice. Returns `{ item }` (same shape as a list item). A `route_id` that is not one of that search's routes gives `VALIDATION_ERROR`.
+
+`DELETE /routes/history/:id` deletes one search; `DELETE /routes/history` deletes all of yours. Both return `{ deleted: <count> }`.
+
+**Admin analytics** (`GET /admin/analytics`) now also has `route_usage: { searches, chosen, followed_recommendation, followed_pct, chosen_by_type: [ { type, count } ], top_trips: [ { source, destination, searches, chosen } ] }` 📄 `admin_analytics_route_usage.json`. `followed_pct` is `null` until someone chooses a route.
+
+`node scripts/seed-demo.js --reset` now also clears saved searches, emergency sessions and signal simulations, so the demo starts clean.
 
 ### 2.5 Incidents
 
