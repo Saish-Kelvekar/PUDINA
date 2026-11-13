@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { Legend, IncidentLegend } from '@/components/Legend';
-import { StatCard } from '@/components/ui/StatCard';
+import { StatStrip } from '@/components/ui/StatCard';
 import { SourceBadge } from '@/components/ui/Badge';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
+import { MapStage, MapChip } from '@/components/layout/MapStage';
+import { PageHeading } from '@/components/layout/PageHeading';
 import { apiClient } from '@/api/api';
-import type { EdgeCongestion, Incident, RouteResult } from '@/types';
-import { isoToLocalTime } from '@/lib/colors';
-import { Layers, RefreshCw } from 'lucide-react';
+import type { EdgeCongestion, Incident } from '@/types';
+import { cn, istTime } from '@/lib/utils';
+import { useLiveIncidents } from '@/lib/realtime';
+import { Layers, RefreshCw, Activity, AlertTriangle, Clock, Gauge, ArrowUpRight } from 'lucide-react';
 
 export default function MapPage() {
   const { add } = useToast() as any;
   const [edges, setEdges] = useState<EdgeCongestion[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [routes] = useState<RouteResult[]>([]);
+  const [simTime, setSimTime] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPredicted, setShowPredicted] = useState(false);
@@ -24,14 +28,16 @@ export default function MapPage() {
     setLoading(true);
     setError(null);
     try {
-      const [trafficRes, incidentsRes, predRes] = await Promise.all([
+      const [trafficRes, incidentsRes, predRes, clock] = await Promise.all([
         apiClient.getTrafficFlow(),
         apiClient.getIncidents(),
-        apiClient.getPredictions(15).catch(() => []),
+        apiClient.getPredictions(15).catch(() => null),
+        apiClient.getSimClock().catch(() => null),
       ]);
       setEdges(trafficRes);
       setIncidents(incidentsRes);
-      setPredicted(predRes as any);
+      setPredicted(predRes?.items ?? []);
+      setSimTime(clock?.sim_time_utc ?? null);
     } catch (err: any) {
       setError(err.message || 'Failed to load map data');
       add?.('error', 'Map load failed', 'Unable to load traffic and incident data');
@@ -46,6 +52,12 @@ export default function MapPage() {
     return () => clearInterval(id);
   }, [fetchMapData]);
 
+  useLiveIncidents((e) => {
+    apiClient.getIncidents().then(setIncidents).catch(() => {});
+    add?.('info', e.type === 'incident:new' ? 'New incident reported' : 'Incident verified',
+      e.incident ? `${e.incident.category} · #${e.incident.id}` : undefined);
+  });
+
   const handleRetry = () => fetchMapData();
 
   if (loading && edges.length === 0 && !error) {
@@ -55,75 +67,98 @@ export default function MapPage() {
     return <ErrorState title="Unable to load map" message={error} onRetry={handleRetry} />;
   }
 
-  const congestedCount = edges.filter((e) => e.congestion > 0.6).length;
+  const withData = edges.filter((e) => e.congestion >= 0);
+  const congestedCount = withData.filter((e) => e.congestion > 0.5).length;
+  const avgSpeed = withData.length
+    ? Math.round(withData.reduce((s, e) => s + (e.speed_kmph ?? 0), 0) / withData.length)
+    : 0;
   const verifiedCount = incidents.filter((i) => i.status === 'verified').length;
 
   return (
-    <div className="flex h-full w-full">
-      <div className="flex-1 relative min-w-0">
+    <MapStage
+      map={
         <MapView
           edges={edges}
           incidents={incidents}
-          routes={routes}
+          routes={[]}
           predictedEdges={predicted}
           showPredicted={showPredicted}
         />
+      }
+      overlay={
+        <div className="absolute left-4 top-4 z-10 lg:left-[392px]">
+          <MapChip>
+            <span className={cn('h-1.5 w-1.5 rounded-full bg-traffic-green', loading ? 'animate-ping' : 'animate-pulse')} />
+            Data as of {istTime(simTime)} IST
+            <SourceBadge source="SIMULATED" />
+          </MapChip>
+        </div>
+      }
+      panel={
+        <>
+          <PageHeading
+            eyebrow="Live — Congestion — Incidents"
+            title="City In"
+            accent="Motion"
+            description="Every road segment coloured by live congestion. Click a line or marker for details."
+          />
 
-        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={fetchMapData}
-              className="p-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-              title="Refresh data"
-            >
-              <RefreshCw className="h-5 w-5" />
+          <div className="flex flex-wrap gap-2">
+            <button onClick={fetchMapData} className="btn-secondary" title="Refresh data">
+              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} /> Refresh
             </button>
             <button
               onClick={() => setShowPredicted((v) => !v)}
-              className={`p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-colors ${
-                showPredicted ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30' : 'bg-slate-800 border border-slate-600'
-              }`}
+              className={showPredicted ? 'btn-primary' : 'btn-secondary'}
               title={showPredicted ? 'Hide predicted congestion' : 'Show predicted congestion (AI)'}
+              aria-pressed={showPredicted}
             >
-              <Layers className="h-5 w-5" />
+              <Layers className="h-4 w-4" /> AI forecast
             </button>
-          </div>
-        </div>
-
-        <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-lg px-3 py-1.5 shadow-panel">
-          <SourceBadge source="SIMULATED" className="text-[10px]" />
-          <span className="text-xs text-slate-400">Last updated {isoToLocalTime(new Date().toISOString())}</span>
-        </div>
-      </div>
-
-      <aside className="w-72 bg-slate-900/95 backdrop-blur border-l border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100">Network status</h2>
-          <p className="text-xs text-slate-500 mt-1">All data labelled SIMULATED</p>
-        </div>
-
-        <div className="p-4 space-y-3 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard title="Segments monitored" value={edges.length} />
-            <StatCard title="Severe congestion" value={congestedCount} trend={{ label: 'segments', value: congestedCount, positive: false }} />
-            <StatCard title="Active incidents" value={incidents.length} trend={{ label: 'verified', value: verifiedCount, positive: false }} />
-            <StatCard title="Routes available" value={routes.length} />
           </div>
 
           <Legend showPredicted={showPredicted} />
           <IncidentLegend />
 
-          <div className="mt-4 p-3 rounded-lg bg-slate-800 border border-slate-700">
-            <p className="text-xs text-slate-400 mb-2">How to use</p>
-            <ul className="text-xs text-slate-300 space-y-1 list-disc list-inside">
-              <li>Coloured lines show live congestion by road segment.</li>
-              <li>Red markers are reported incidents.</li>
-              <li>Toggle the predicted layer for AI forecasts.</li>
-              <li>Open Route Planner to compare journeys.</li>
+          <div className="rounded-3xl border border-white/80 bg-white/40 p-4">
+            <p className="eyebrow mb-2">How to use</p>
+            <ul className="space-y-1.5 text-xs leading-relaxed text-ink-soft">
+              <li>— Coloured lines show live congestion by road segment.</li>
+              <li>— Round markers are reported incidents.</li>
+              <li>— Toggle AI forecast for the 15-minute prediction layer (dotted lines).</li>
+              <li>— New reports appear live, no refresh needed.</li>
+              <li>— Open Route Planner to compare journeys.</li>
             </ul>
           </div>
+        </>
+      }
+      bottom={
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">
+          <StatStrip
+            className="flex-1"
+            items={[
+              { icon: <Activity className="h-4 w-4" />, value: withData.length, label: `Segments monitored · of ${edges.length} streets` },
+              { icon: <Gauge className="h-4 w-4" />, value: congestedCount, label: 'Heavy or severe' },
+              { icon: <AlertTriangle className="h-4 w-4" />, value: incidents.length, label: `Active incidents · ${verifiedCount} verified` },
+              { icon: <Clock className="h-4 w-4" />, value: `${avgSpeed} km/h`, label: 'Average speed' },
+            ]}
+          />
+          <Link
+            to="/route"
+            className="glass-dark group flex items-center justify-between gap-4 rounded-3xl px-6 py-5 xl:w-72"
+          >
+            <div>
+              <p className="font-display text-xl font-light leading-tight">
+                Plan a smarter <span className="italic text-bronze-light">route</span>
+              </p>
+              <p className="mt-1 text-xs text-sand-300">Compare shortest, fastest &amp; AI-optimised.</p>
+            </div>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sand-50 text-ink transition-transform group-hover:rotate-45">
+              <ArrowUpRight className="h-5 w-5" />
+            </span>
+          </Link>
         </div>
-      </aside>
-    </div>
+      }
+    />
   );
 }

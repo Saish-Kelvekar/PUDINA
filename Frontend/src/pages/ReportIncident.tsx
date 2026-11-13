@@ -4,19 +4,23 @@ import { MapView } from '@/components/MapView';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { apiClient } from '@/api/api';
+import { apiClient, DEFAULT_CENTER } from '@/api/api';
+import { useLiveIncidents } from '@/lib/realtime';
 import type { EdgeCongestion, Incident } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
 import { isoToLocalTime } from '@/lib/colors';
-import { AlertCircle, MapPin, Send } from 'lucide-react';
+import { MapPin, Send, Crosshair, CheckCircle2 } from 'lucide-react';
+import { StatusPill } from '@/components/ui/Badge';
+import { MapStage, MapChip } from '@/components/layout/MapStage';
+import { PageHeading } from '@/components/layout/PageHeading';
 
 const INCIDENT_TYPES: { value: string; label: string }[] = [
   { value: 'accident', label: 'Accident' },
-  { value: 'roadblock', label: 'Roadblock' },
-  { value: 'flood', label: 'Flooding' },
   { value: 'breakdown', label: 'Vehicle breakdown' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'congestion', label: 'Congestion' },
+  { value: 'roadwork', label: 'Roadwork' },
+  { value: 'flooding', label: 'Flooding' },
+  { value: 'closure', label: 'Road closure' },
+  { value: 'event', label: 'Event / crowd' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -26,15 +30,12 @@ const SEVERITIES: { value: string; label: string }[] = [
   { value: 'high', label: 'High' },
 ];
 
-// Default center near Central Hub
-const DEFAULT_CENTER: [number, number] = [12.9716, 77.5946];
-
 export default function ReportIncident() {
   const { add } = useToast() as any;
   const [type, setType] = useState('accident');
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState('medium');
-  const [reporter, setReporter] = useState('anonymous');
+  const [lanesBlocked, setLanesBlocked] = useState(0);
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(null);
   const [edges, setEdges] = useState<EdgeCongestion[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -62,6 +63,10 @@ export default function ReportIncident() {
     fetchMap();
   }, [fetchMap]);
 
+  useLiveIncidents(() => {
+    apiClient.getIncidents().then(setIncidents).catch(() => {});
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selected) {
@@ -75,18 +80,20 @@ export default function ReportIncident() {
         type,
         lat: selected.lat,
         lng: selected.lng,
-        description,
+        description: description.trim(),
         severity,
-        reporter,
+        lanes_blocked: lanesBlocked,
+        is_closure: type === 'closure' ? true : undefined,
       });
       setLastSubmitted(created);
-      setIncidents((prev) => [created, ...prev]);
-      add?.('success', 'Incident reported', 'Your report has been submitted');
+      setIncidents((prev) => [created, ...prev.filter((i) => i.id !== created.id)]);
+      add?.('success', 'Incident reported', 'Your report has been submitted for review');
       setDescription('');
+      setLanesBlocked(0);
       setSelected(null);
     } catch (err: any) {
       setSubmitError(err.message || 'Failed to submit incident');
-      add?.('error', 'Report failed', 'Could not submit the incident');
+      add?.('error', 'Report failed', err.message);
     } finally {
       setSubmitting(false);
     }
@@ -100,42 +107,40 @@ export default function ReportIncident() {
   }
 
   return (
-    <div className="flex h-full w-full">
-      {/* Left map */}
-      <div className="flex-1 relative min-w-0 flex flex-col">
+    <MapStage
+      map={
         <MapView
           edges={edges}
           incidents={incidents}
           routes={[]}
           center={selected ? [selected.lat, selected.lng] : DEFAULT_CENTER}
-          zoom={selected ? 15 : 13}
+          zoom={selected ? 16 : 15}
           onMapClick={(lat, lng) => setSelected({ lat, lng })}
         />
-
-        <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-          <p className="text-xs bg-slate-900/90 backdrop-blur px-3 py-1.5 rounded border border-slate-700 text-slate-300 shadow-panel">
-            {selected ? 'Location selected — click to change' : 'Click the map to choose incident location'}
-          </p>
+      }
+      overlay={
+        <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2 lg:left-[392px]">
+          <MapChip>
+            <Crosshair className="h-3.5 w-3.5 text-bronze" />
+            {selected ? 'Location selected — click to change' : 'Click the map to choose the incident location'}
+          </MapChip>
+          {selected && (
+            <MapChip className="bg-ink/90 text-sand-50 border-white/10">
+              <MapPin className="h-3.5 w-3.5 text-bronze-light" />
+              <span className="font-mono">{selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}</span>
+            </MapChip>
+          )}
         </div>
+      }
+      panel={
+        <>
+          <PageHeading
+            eyebrow="Citizen — Reports — Verification"
+            title="Report An"
+            accent="Incident"
+            description="Pin the spot on the map, describe what you see. Administrators review every report."
+          />
 
-        {selected && (
-          <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 backdrop-blur px-3 py-2 rounded border border-slate-700 text-sm text-slate-200 shadow-panel">
-            <MapPin className="h-4 w-4 text-red-400" />
-            <span>{selected.lat.toFixed(4)}, {selected.lng.toFixed(4)}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Right form */}
-      <aside className="w-80 bg-slate-900/95 backdrop-blur border-l border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-400" /> Report Incident
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">Reports are reviewed by administrators</p>
-        </div>
-
-        <div className="p-4 space-y-4 overflow-y-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             <Select
               label="Incident type"
@@ -149,88 +154,114 @@ export default function ReportIncident() {
               ))}
             </Select>
 
-            <Select
-              label="Severity"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value as any)}
-            >
-              {SEVERITIES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </Select>
+            <div className="space-y-1.5">
+              <span className="block pl-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">Severity</span>
+              <div className="segmented" role="radiogroup" aria-label="Severity">
+                {SEVERITIES.map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={severity === s.value}
+                    data-active={severity === s.value}
+                    onClick={() => setSeverity(s.value)}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <Input
               label="Description (optional)"
               type="text"
-              placeholder="What do you see? e.g. two-car collision, lane blocked"
+              placeholder="e.g. two-car collision, lane blocked"
+              maxLength={500}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
 
-            <Input
-              label="Reporter name (optional)"
-              type="text"
-              placeholder="anonymous"
-              value={reporter}
-              onChange={(e) => setReporter(e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <span className="block pl-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">Lanes blocked</span>
+              <div className="segmented" role="radiogroup" aria-label="Lanes blocked">
+                {[0, 1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="radio"
+                    aria-checked={lanesBlocked === n}
+                    data-active={lanesBlocked === n}
+                    onClick={() => setLanesBlocked(n)}
+                  >
+                    {n === 0 ? 'None' : n === 3 ? '3+' : n}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <p className="text-[10px] text-slate-500">
-              Source will be labelled <span className="font-mono">USER_REPORTED</span>. Reports start as{" "}
-              <span className="font-medium">pending</span> until verified.
+            <p className="px-1 text-[11px] leading-relaxed text-ink-faint">
+              Pick a point within 200 m of a road. Reported under your account and labelled{' '}
+              <span className="font-mono text-ink-muted">USER_REPORTED</span>; it stays{' '}
+              <span className="font-semibold text-ink-muted">pending</span> until an admin verifies it.
             </p>
 
-            <Button type="submit" variant="primary" className="w-full" loading={submitting}>
+            <Button type="submit" variant="primary" size="lg" className="w-full" loading={submitting}>
               <Send className="mr-2 h-4 w-4" /> Submit report
             </Button>
           </form>
 
           {submitError && (
-            <div className="p-3 rounded-lg bg-red-900/20 border border-red-500/30 text-sm text-red-300">
+            <div className="rounded-2xl border border-traffic-red/25 bg-traffic-red/10 px-4 py-3 text-sm text-traffic-red">
               {submitError}
             </div>
           )}
 
           {lastSubmitted && (
-            <div className="p-3 rounded-lg bg-green-900/20 border border-green-500/30 text-sm text-green-300 space-y-1">
+            <div className="glass-dark space-y-2 rounded-3xl p-5 animate-slide-up">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-400" />
-                <span className="font-medium">Report submitted</span>
+                <CheckCircle2 className="h-4 w-4 text-traffic-green" />
+                <span className="font-display text-lg font-light">Report submitted</span>
               </div>
-              <div className="text-[10px] text-slate-400">
+              <div className="text-xs text-sand-300">
                 ID #{lastSubmitted.id} · {isoToLocalTime(lastSubmitted.created_at)} ·{' '}
-                <span className="text-green-400">{lastSubmitted.status}</span>
+                <span className="capitalize text-bronze-light">{lastSubmitted.status}</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setLastSubmitted(null)} className="w-full mt-2">
+              <button
+                onClick={() => setLastSubmitted(null)}
+                className="mt-1 w-full rounded-full bg-sand-50 px-4 py-2 text-xs font-semibold text-ink hover:bg-white"
+              >
                 Report another
-              </Button>
+              </button>
             </div>
           )}
-
-          <div className="mt-4 p-3 rounded-lg bg-slate-800 border border-slate-700">
-            <p className="text-xs font-medium text-slate-300 mb-2">Nearby recent reports</p>
-            {incidents.length === 0 ? (
-              <p className="text-[10px] text-slate-500">No recent reports.</p>
-            ) : (
-              <ul className="space-y-2">
-                {incidents.slice(0, 5).map((inc) => (
-                  <li key={inc.id} className="flex justify-between items-start">
-                    <div className="text-sm text-slate-200">{inc.type}</div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] text-slate-500">{isoToLocalTime(inc.created_at)}</span>
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${inc.status === 'verified' ? 'bg-green-900/20 text-green-400 border border-green-500/30' : 'bg-slate-700 text-slate-300 border border-slate-600'}`}>
-                        {inc.status}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+        </>
+      }
+      bottom={
+        <div className="glass rounded-3xl px-5 py-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="eyebrow">Recent reports</p>
+            <span className="text-[11px] text-ink-faint">{incidents.length} total</span>
           </div>
+          {incidents.length === 0 ? (
+            <p className="text-sm text-ink-muted">No recent reports.</p>
+          ) : (
+            <ul className="flex gap-2 overflow-x-auto pb-1">
+              {incidents.slice(0, 5).map((inc) => (
+                <li
+                  key={inc.id}
+                  className="flex min-w-[170px] items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/60 px-3.5 py-2.5"
+                >
+                  <div>
+                    <div className="text-sm font-semibold capitalize text-ink">{inc.type}</div>
+                    <div className="text-[10px] text-ink-faint">{isoToLocalTime(inc.created_at)}</div>
+                  </div>
+                  <StatusPill status={inc.status} />
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      </aside>
-    </div>
+      }
+    />
   );
 }

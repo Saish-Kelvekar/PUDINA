@@ -2,10 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { MapView } from '@/components/MapView';
 import { StatCard } from '@/components/ui/StatCard';
-import { SourceBadge } from '@/components/ui/Badge';
+import { SourceBadge, Badge } from '@/components/ui/Badge';
+import { PageHeading } from '@/components/layout/PageHeading';
 import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/api/api';
-import type { EdgeCongestion } from '@/types';
+import type { EdgeCongestion, PredictionItem, PredictionMetrics } from '@/types';
 import { LoadingState, ErrorState } from '@/components/ui/ErrorState';
 import { congestionColor } from '@/lib/colors';
 import {
@@ -17,12 +18,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Brain, Play } from 'lucide-react';
+import { Play, AlertTriangle } from 'lucide-react';
+import { istTime } from '@/lib/utils';
 
 export default function Prediction() {
   const { add } = useToast() as any;
   const [horizon, setHorizon] = useState<15 | 30>(15);
-  const [predictions, setPredictions] = useState<Array<EdgeCongestion & { predicted_congestion: number; predicted_level: string; confidence: number }>>([]);
+  const [predictions, setPredictions] = useState<PredictionItem[]>([]);
+  const [meta, setMeta] = useState<{ model_version: string; fallback_reason: string | null; sim_time_utc: string | null } | null>(null);
+  const [metrics, setMetrics] = useState<PredictionMetrics | null>(null);
   const [edges, setEdges] = useState<EdgeCongestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +35,15 @@ export default function Prediction() {
     setLoading(true);
     setError(null);
     try {
-      const [preds] = await Promise.all([apiClient.getPredictions(horizon)]);
-      setPredictions(preds as any);
-      await apiClient.getTrafficFlow().then(setEdges);
+      const [set, flow, m] = await Promise.all([
+        apiClient.getPredictions(horizon),
+        apiClient.getTrafficFlow(),
+        apiClient.getPredictionMetrics().catch(() => null),
+      ]);
+      setPredictions(set.items);
+      setMeta({ model_version: set.model_version, fallback_reason: set.fallback_reason, sim_time_utc: set.sim_time_utc });
+      setEdges(flow);
+      setMetrics(m);
     } catch (err: any) {
       setError(err.message || 'Failed to load predictions');
       add?.('error', 'Prediction load failed', 'Could not fetch congestion forecast');
@@ -46,7 +56,11 @@ export default function Prediction() {
     fetchPredictions();
   }, [fetchPredictions]);
 
-  const highSegments = predictions.filter((p) => (p.predicted_congestion ?? 0) > 0.6).length;
+  const highSegments = predictions.filter((p) => p.predicted_congestion > 0.5).length;
+  const confs = predictions.map((p) => p.confidence).filter((c): c is number => c != null);
+  const avgConf = confs.length ? confs.reduce((a, b) => a + b, 0) / confs.length : null;
+  const hm = metrics?.horizons?.[String(horizon)] ?? null;
+  const ranked = [...predictions].sort((a, b) => b.predicted_congestion - a.predicted_congestion);
 
   if (loading && predictions.length === 0) {
     return <LoadingState message="Generating congestion forecast…" />;
@@ -55,174 +69,191 @@ export default function Prediction() {
     return <ErrorState title="Unable to load predictions" message={error} onRetry={fetchPredictions} />;
   }
 
-  const chartData = predictions.slice(0, 8).map((p) => ({
-    name: `${p.from} → ${p.to}`.replace(/_/g, ' '),
-    current: Math.round((p.current_congestion ?? p.congestion) * 100),
-    predicted: Math.round((p.predicted_congestion ?? 0) * 100),
+  const pct = (v?: number) => Math.round(Math.max(0, v ?? 0) * 100);
+  const chartData = ranked.slice(0, 8).map((p) => ({
+    name: (p.street_name ?? p.segment_id ?? '').slice(0, 22),
+    current: pct(p.current_congestion),
+    predicted: pct(p.predicted_congestion),
   }));
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const { value } = payload[0];
       return (
-        <div className="bg-slate-800 border border-slate-700 p-2 rounded text-xs">
-          <strong className="text-slate-100">{value}</strong>
+        <div className="rounded-2xl border border-white bg-sand-50/95 px-3.5 py-2.5 text-xs shadow-glass backdrop-blur">
+          <p className="mb-1 font-semibold capitalize text-ink">{label}</p>
+          {payload.map((pl: any) => (
+            <p key={pl.dataKey} className="flex items-center gap-2 text-ink-muted">
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: pl.fill }} />
+              {pl.dataKey === 'current' ? 'Current' : 'Predicted'}: <strong className="text-ink">{pl.value}%</strong>
+            </p>
+          ))}
         </div>
       );
     }
     return null;
   };
 
-  return (
-    <div className="flex h-full w-full">
-      <aside className="w-80 bg-slate-900/95 backdrop-blur border-r border-slate-800 flex flex-col shrink-0 z-10">
-        <div className="p-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <Brain className="h-5 w-5 text-purple-400" /> Traffic Prediction
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">AI congestion forecast</p>
-        </div>
+  const levelVariant = (lvl: string) =>
+    lvl === 'severe' ? 'error' : lvl === 'heavy' || lvl === 'moderate' ? 'warning' : lvl === 'flowing' ? 'success' : 'muted';
 
-        <div className="p-4 space-y-4 overflow-y-auto">
+  return (
+    <div className="h-full overflow-y-auto p-3 md:p-5">
+      <div className="grid gap-4 lg:h-full lg:grid-cols-[340px_minmax(0,1fr)]">
+        {/* Controls */}
+        <aside className="space-y-5 rounded-4xl border border-white/80 bg-white/45 p-6 lg:overflow-y-auto">
+          <PageHeading
+            eyebrow="AI — Forecast — Congestion"
+            title="See What's"
+            accent="Ahead"
+            description="Short-horizon congestion forecasts for every monitored segment."
+          />
+
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Prediction horizon</label>
-            <div className="flex gap-2">
+            <span className="block pl-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">Prediction horizon</span>
+            <div className="segmented">
               {([15, 30] as const).map((h) => (
-                <button
-                  key={h}
-                  onClick={() => setHorizon(h)}
-                  className={`flex-1 px-2 py-1.5 text-xs rounded border transition-colors ${
-                    horizon === h
-                      ? 'bg-purple-600/20 text-purple-300 border-purple-500/30'
-                      : 'bg-slate-800 text-slate-400 border-slate-600 hover:text-white hover:border-slate-500'
-                  }`}
-                >
-                  {h}-min
+                <button key={h} type="button" data-active={horizon === h} onClick={() => setHorizon(h)}>
+                  {h} minutes
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-slate-500">Forecasts {horizon} minutes ahead</p>
           </div>
 
-          <Button onClick={fetchPredictions} variant="primary" className="w-full" loading={loading}>
+          <Button onClick={fetchPredictions} variant="primary" size="lg" className="w-full" loading={loading}>
             <Play className="mr-2 h-4 w-4" /> Generate forecast
           </Button>
 
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="grid grid-cols-2 gap-3">
             <StatCard title="Segments" value={predictions.length} />
-            <StatCard title="Severe (>60%)" value={highSegments} trend={{ label: 'segments', value: highSegments, positive: false }} />
+            <StatCard title="Heavy or severe" value={highSegments} />
           </div>
 
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mt-3">
-            <p className="text-[10px] font-medium text-slate-400 mb-1">Model confidence</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-slate-700 rounded overflow-hidden">
-                <div className="h-full bg-blue-500" style={{ width: '72%' }} />
-              </div>
-              <span className="text-xs text-slate-300 font-mono">0.72</span>
+          <div className="glass-dark rounded-3xl p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-sand-300">Average confidence</p>
+            <p className="mt-2 font-display text-4xl font-light text-sand-50">
+              {avgConf != null ? avgConf.toFixed(2) : '—'}
+            </p>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-bronze-light" style={{ width: `${Math.round((avgConf ?? 0) * 100)}%` }} />
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Baseline MAE: 6.1 km/h · Model MAE: 4.2 km/h</p>
+            <p className="mt-3 text-[11px] text-sand-300">
+              {hm
+                ? `Test-week error: model ${hm.mae_model_kmph} km/h vs baseline ${hm.mae_baseline_kmph} km/h (${hm.improvement_pct}% better)`
+                : 'Model metrics unavailable (ML service offline).'}
+            </p>
+            <p className="mt-1 text-[11px] text-sand-300">
+              Model {meta?.model_version ?? '—'} · forecast from {istTime(meta?.sim_time_utc)} IST
+            </p>
           </div>
+
+          {meta?.fallback_reason && (
+            <div className="flex gap-2 rounded-2xl border border-traffic-yellow/40 bg-traffic-yellow/10 px-4 py-3 text-xs text-ink-soft">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-traffic-orange" />
+              <span>
+                <strong>Baseline fallback:</strong> the AI model is unavailable ({meta.fallback_reason}), so predicted speed = current speed.
+              </span>
+            </div>
+          )}
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-900/20 border border-red-500/30 text-sm text-red-300">
+            <div className="rounded-2xl border border-traffic-red/25 bg-traffic-red/10 px-4 py-3 text-sm text-traffic-red">
               {error}
             </div>
           )}
-        </div>
-      </aside>
+        </aside>
 
-      <div className="flex-1 relative min-w-0 flex flex-col">
-        <div className="h-[42%] border-b border-slate-800 p-4 flex flex-col">
-          <div className="flex items-center justify-between mb-3 shrink-0">
-            <h3 className="text-sm font-semibold text-slate-100">Actual vs predicted congestion</h3>
-            <SourceBadge source="AI_PREDICTED" className="text-[10px]" />
-          </div>
-          <div className="flex-1 min-h-0 w-full">
-            {chartData.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
-                <p>Generate a forecast to view the chart.</p>
+        {/* Results */}
+        <div className="grid min-h-0 gap-4 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)]">
+          <section className="flex h-[360px] flex-col rounded-4xl border border-white/80 bg-white/55 p-5 lg:h-auto">
+            <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="eyebrow">Actual vs predicted</p>
+                <h3 className="display text-2xl">Congestion by segment</h3>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 10, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} interval={0} angle={-15} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} domain={[0, 100]} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="current" fill="#2563eb" radius={[4, 4, 0, 0]} name="Current %" />
-                  <Bar dataKey="predicted" fill="#7c3aed" radius={[4, 4, 0, 0]} name="Predicted %" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          <div className="mt-2 flex gap-4 text-[10px] text-slate-500 shrink-0">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500" /> Current</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-purple-500" /> Predicted ({horizon} min)</span>
-          </div>
-        </div>
-
-        <div className="flex-1 p-4 overflow-y-auto border-b border-slate-800 min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-100">Segment forecasts</h3>
-            <span className="text-xs text-slate-500">{predictions.length} segments</span>
-          </div>
-          {predictions.length === 0 ? (
-            <div className="h-32 flex flex-col items-center justify-center text-center p-6">
-              <p className="text-sm text-slate-400">No forecast data. Generate a forecast above.</p>
+              <div className="flex items-center gap-3 text-[11px] text-ink-muted">
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-ink" /> Current</span>
+                <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-bronze-light" /> Predicted ({horizon} min)</span>
+                <SourceBadge source="AI_PREDICTED" />
+              </div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {predictions.map((p) => (
-                <div key={`${p.from}-${p.to}`} className="flex items-center justify-between p-2.5 rounded-lg bg-slate-800 border border-slate-700">
-                  <div className="min-w-0">
-                    <div className="text-sm text-slate-200 truncate max-w-[180px]">{`${p.from} → ${p.to}`.replace(/_/g, ' ')}</div>
-                    <div className="text-[10px] text-slate-500">{p.road_type} · {p.distance_km} km</div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-[10px] text-slate-400 w-10 text-right">
-                      {Math.round((p.current_congestion ?? p.congestion) * 100)}%
-                    </div>
-                    <div className="w-16 h-2 bg-slate-700 rounded overflow-hidden">
-                      <div
-                        className="h-full"
-                        style={{ width: `${Math.min((p.predicted_congestion ?? 0) * 100, 100)}%`, backgroundColor: congestionColor(p.predicted_congestion ?? 0) }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-slate-400 w-10 text-right">
-                      {Math.round((p.predicted_congestion ?? 0) * 100)}%
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${
-                        p.predicted_level === 'high' ? 'text-red-400 border-red-500/30 bg-red-900/20' :
-                        p.predicted_level === 'moderate' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-900/20' :
-                        'text-green-400 border-green-500/30 bg-green-900/20'
-                      }`}>
-                        {p.predicted_level.charAt(0).toUpperCase() + p.predicted_level.slice(1)}
-                      </span>
-                      <span className="text-[10px] text-slate-500 font-mono">{Math.round(p.confidence * 100)}%</span>
-                    </div>
-                  </div>
+            <div className="min-h-0 w-full flex-1">
+              {chartData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-ink-muted">
+                  Generate a forecast to view the chart.
                 </div>
-              ))}
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: -10 }} barGap={4}>
+                    <CartesianGrid strokeDasharray="2 6" stroke="#CFC4B6" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B635A' }} interval={0} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#6B635A' }} domain={[0, 100]} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(154,107,79,0.08)', radius: 12 } as any} />
+                    <Bar dataKey="current" fill="#1F1D1B" radius={[8, 8, 8, 8]} maxBarSize={18} name="Current %" />
+                    <Bar dataKey="predicted" fill="#C49A7A" radius={[8, 8, 8, 8]} maxBarSize={18} name="Predicted %" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
-          )}
-        </div>
+          </section>
 
-        <div className="h-[28%] p-3 min-h-[180px]">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Predicted congestion layer</h3>
-          <div className="h-[calc(100%-1.5rem)] rounded-lg overflow-hidden border border-slate-800">
-            <MapView
-              edges={edges}
-              incidents={[]}
-              routes={[]}
-              predictedEdges={predictions.map((p) => ({
-                ...p,
-                predicted_congestion: p.predicted_congestion,
-                predicted_level: p.predicted_level,
-              }))}
-              showPredicted
-            />
+          <div className="grid min-h-0 gap-4 xl:grid-cols-2">
+            <section className="flex max-h-[420px] min-h-0 flex-col rounded-4xl border border-white/80 bg-white/55 p-5 lg:max-h-none">
+              <div className="mb-3 flex shrink-0 items-center justify-between">
+                <h3 className="display text-xl">Segment forecasts</h3>
+                <span className="text-[11px] text-ink-faint">{predictions.length} segments</span>
+              </div>
+              {predictions.length === 0 ? (
+                <div className="flex h-32 items-center justify-center text-sm text-ink-muted">
+                  No forecast data. Generate a forecast.
+                </div>
+              ) : (
+                <div className="-mr-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-2">
+                  {ranked.map((p) => (
+                    <div key={p.segment_id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/60 px-3.5 py-2.5">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-ink">{p.street_name ?? p.segment_id}</div>
+                        <div className="text-[10px] text-ink-faint">{p.road_type} · {p.distance_km} km</div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2.5">
+                        <span className="w-8 text-right text-[10px] text-ink-faint">
+                          {pct(p.current_congestion)}%
+                        </span>
+                        <div className="h-1.5 w-14 overflow-hidden rounded-full bg-sand-300/70">
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${pct(p.predicted_congestion)}%`, backgroundColor: congestionColor(p.predicted_congestion) }}
+                          />
+                        </div>
+                        <span className="w-8 text-right text-[11px] font-semibold text-ink">
+                          {pct(p.predicted_congestion)}%
+                        </span>
+                        <Badge variant={levelVariant(p.predicted_level)}>{p.predicted_level}</Badge>
+                        <span className="hidden w-8 text-right font-mono text-[10px] text-ink-faint sm:block">{p.confidence != null ? `${Math.round(p.confidence * 100)}%` : '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="relative h-[320px] overflow-hidden rounded-4xl border border-white/80 lg:h-auto lg:min-h-[220px]">
+              <MapView
+                edges={edges}
+                incidents={[]}
+                routes={[]}
+                predictedEdges={predictions.map((p) => ({
+                  ...p,
+                  predicted_congestion: p.predicted_congestion,
+                  predicted_level: p.predicted_level,
+                }))}
+                showPredicted
+              />
+              <div className="pointer-events-none absolute left-3 top-3 z-10">
+                <span className="glass-strong inline-block rounded-full px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
+                  Predicted layer
+                </span>
+              </div>
+            </section>
           </div>
         </div>
       </div>

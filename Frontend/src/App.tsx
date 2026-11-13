@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
-import { Sidebar } from '@/components/Sidebar';
+import { Sidebar, NAV_ITEMS } from '@/components/Sidebar';
+import { Monogram } from '@/components/layout/AuthLayout';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import MapPage from '@/pages/Map';
@@ -19,8 +21,8 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const location = useLocation();
   if (state.isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-900">
-        <div className="animate-spin h-6 w-6 text-blue-500 border-4 border-blue-500/30 rounded-full border-t-transparent" />
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-ink/10 border-t-bronze" />
       </div>
     );
   }
@@ -28,6 +30,15 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
   return children;
+}
+
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</>;
 }
 
 function AppShell() {
@@ -47,46 +58,68 @@ function AppShell() {
     );
   }
 
+  const current = NAV_ITEMS.find((n) => n.href === location.pathname);
+
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-900 text-slate-100">
-      <Sidebar
-        user={state.user}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onLogout={logout}
-      />
-      <div className="flex min-w-0 flex-1 flex-col relative z-10">
-        <header className="h-14 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 bg-slate-900/95 backdrop-blur sticky top-0 z-20">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSidebarOpen((o) => !o)}
-              className="md:hidden p-2 text-slate-400 hover:text-white rounded hover:bg-slate-800"
-              aria-label="Toggle navigation"
-            >
-              <span className="sr-only">Toggle navigation</span>
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <div className="hidden md:flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Live demo · simulated data</span>
+    <div className="flex h-[100dvh] w-full flex-col gap-3 overflow-hidden p-3 pb-[5.5rem] text-ink md:gap-4 md:p-5 md:pb-5">
+      {/* Top bar */}
+      <header className="flex shrink-0 items-center justify-between gap-3">
+        <Link to="/map" className="flex items-center gap-3 pl-1">
+          <Monogram dark />
+          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.35em] text-ink sm:block">
+            TrafficVision
+          </span>
+        </Link>
+
+        <div className="glass hidden items-center gap-1 rounded-full p-1.5 lg:flex">
+          <span className="rounded-full bg-ink px-4 py-2 text-xs font-semibold text-sand-50">
+            {current?.label ?? 'Overview'}
+          </span>
+          <span className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-ink-muted">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-traffic-green" />
+            Live demo · simulated data
+          </span>
+          <span className="px-4 py-2 text-xs font-medium text-ink-muted">
+            Bengaluru · <LiveClock />
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-3 rounded-full bg-ink py-1.5 pl-5 pr-1.5 text-sand-50 shadow-frame sm:flex">
+            <div className="leading-tight">
+              <p className="text-xs font-semibold">{state.user?.name ?? 'Guest'}</p>
+              <p className="text-[10px] capitalize text-sand-300">{state.user?.role ?? 'user'}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-xs text-slate-400">
-              {state.user?.name ?? 'Guest'} <span className="text-slate-600">·</span> <span className="capitalize">{state.user?.role ?? 'user'}</span>
-            </span>
             <button
               onClick={logout}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              aria-label="Sign out"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-sand-50 text-ink transition-transform hover:scale-105"
             >
-              Sign out
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
-        </header>
+          <button
+            onClick={logout}
+            aria-label="Sign out"
+            className="icon-btn sm:hidden"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
 
-        <main className="flex-1 overflow-y-auto bg-slate-900 min-h-0">
+      <div className="flex min-h-0 flex-1 gap-4">
+        <Sidebar
+          user={state.user}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={logout}
+        />
+
+        <main
+          key={location.pathname}
+          className="glass relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-[2rem] md:rounded-[2.25rem] animate-fade-in"
+        >
           <Routes location={location}>
             <Route path="/map" element={<RequireAuth><MapPage /></RequireAuth>} />
             <Route path="/route" element={<RequireAuth><RoutePlanner /></RequireAuth>} />

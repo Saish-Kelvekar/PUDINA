@@ -6,16 +6,20 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 
 export function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {
   const variants = {
-    default: 'bg-slate-700 text-slate-300 border border-slate-600',
-    success: 'bg-green-900/20 text-green-400 border-green-500/30',
-    warning: 'bg-yellow-900/20 text-yellow-400 border-yellow-500/30',
-    error: 'bg-red-900/20 text-red-400 border-red-500/30',
-    info: 'bg-blue-900/20 text-blue-400 border-blue-500/30',
-    muted: 'bg-slate-800 text-slate-400 border border-slate-700',
+    default: 'bg-white/70 text-ink-soft border-white',
+    success: 'bg-traffic-green/10 text-traffic-green border-traffic-green/25',
+    warning: 'bg-traffic-yellow/15 text-[#8a6a1c] border-traffic-yellow/30',
+    error: 'bg-traffic-red/10 text-traffic-red border-traffic-red/25',
+    info: 'bg-traffic-blue/10 text-traffic-blue border-traffic-blue/25',
+    muted: 'bg-sand-200/70 text-ink-muted border-sand-300',
   };
   return (
     <span
-      className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium leading-none border', variants[variant], className)}
+      className={cn(
+        'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider leading-none border',
+        variants[variant],
+        className,
+      )}
       {...props}
     >
       {children}
@@ -30,18 +34,30 @@ export function SourceBadge({
 }: { source?: string; children?: React.ReactNode; className?: string }) {
   const label = children ?? (source ? source.replace(/_/g, ' ') : 'Unknown');
   const variants: Record<string, string> = {
-    SIMULATED: 'bg-slate-700 text-slate-300 border border-slate-600',
-    USER_REPORTED: 'bg-blue-900/20 text-blue-400 border-blue-500/30',
-    AI_PREDICTED: 'bg-purple-900/20 text-purple-400 border-purple-500/30',
-    HISTORICAL: 'bg-emerald-900/20 text-emerald-400 border-emerald-500/30',
-    LIVE_EXTERNAL_API: 'bg-green-900/20 text-green-400 border-green-500/30',
+    SIMULATED: 'bg-white/70 text-ink-muted border-white',
+    USER_REPORTED: 'bg-traffic-blue/10 text-traffic-blue border-traffic-blue/25',
+    AI_PREDICTED: 'bg-bronze/10 text-bronze-dark border-bronze/25',
+    HISTORICAL: 'bg-traffic-green/10 text-traffic-green border-traffic-green/25',
+    LIVE_EXTERNAL_API: 'bg-traffic-green/10 text-traffic-green border-traffic-green/25',
   };
   return (
-    <Badge
-      variant="default"
-      className={cn(variants[source ?? ''] ?? variants[''], className)}
-    >
+    <Badge variant="default" className={cn(variants[source ?? ''] ?? variants.SIMULATED, className)}>
       {label}
+    </Badge>
+  );
+}
+
+/** Small status pill for incident statuses. */
+export function StatusPill({ status, className }: { status: string; className?: string }) {
+  const map: Record<string, BadgeProps['variant']> = {
+    verified: 'success',
+    pending: 'warning',
+    resolved: 'muted',
+    rejected: 'error',
+  };
+  return (
+    <Badge variant={map[status?.toLowerCase()] ?? 'default'} className={className}>
+      {status}
     </Badge>
   );
 }

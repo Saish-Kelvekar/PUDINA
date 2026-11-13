@@ -1,424 +1,550 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import type {
+  AdminOverview,
+  Analytics,
+  DuplicatePair,
   EdgeCongestion,
+  EmergencyResult,
+  EmergencyVehicle,
+  GraphEdge,
+  GraphNode,
   Incident,
   IncidentCreate,
-  RoutesResponse,
-  SignalResult,
-  Analytics,
+  Junction,
+  NetworkImpact,
+  PredictionItem,
+  PredictionMetrics,
+  PredictionSet,
+  RouteComparison,
+  RoutePoint,
+  RouteResult,
+  SignalSimulation,
+  SimClock,
   User,
-  UserRole,
-  CityNode,
-  EmergencyVehicle,
-  MockConfig,
 } from '@/types';
-
-const API_BASE = '/api';
-
-// ---------------------------------------------------------------------------
-// Mock configuration — one switch per feature. Flip to `false` when the real
-// endpoint goes live. Per PRD Phase 0 / Phase 5 rule.
-// ---------------------------------------------------------------------------
-export const USE_MOCK: MockConfig = {
-  routes: true,
-  traffic: true,
-  incidents: true,
-  predictions: true,
-  signals: true,
-  emergency: true,
-  admin: true,
-  analytics: true,
-  auth: true, // backend skeleton has no auth endpoints yet
-};
-
-const mockDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
+import { routeColor } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
-// Axios instance (real API)
+// HTTP client
+// The backend (Express, :5000) wraps every answer as
+//   { success: true,  data: <payload>, error: null }
+//   { success: false, data: null, error: { code, message, details? } }
+// Vite proxies /api and /socket.io to it in development (vite.config.ts).
 // ---------------------------------------------------------------------------
 const api: AxiosInstance = axios.create({
-  baseURL: API_BASE,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 20000,
 });
 
-// Attach JWT when present
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('tv_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
+export interface ApiError extends Error {
+  status?: number;
+  code?: string;
+  details?: Array<{ field: string; issue: string }>;
+  response?: { status?: number; data?: { detail?: string } };
+}
+
+function toApiError(error: AxiosError<any>): ApiError {
+  const env = error.response?.data;
+  const status = error.response?.status;
+  let message: string;
+  if (env?.error?.message) {
+    // Generic validation messages carry the specifics in `details`; others are already specific.
+    const generic = /^invalid input$/i.test(env.error.message);
+    const details = generic && Array.isArray(env.error.details) && env.error.details.length
+      ? ': ' + env.error.details.map((d: any) => `${d.field} ${d.issue}`).join('; ')
+      : '';
+    message = env.error.message + details;
+  } else if (!error.response) {
+    message = 'Cannot reach the TrafficVision server. Is the backend running on port 5000?';
+  } else if (status === 502 || status === 503 || status === 504) {
+    message = 'The TrafficVision server is not responding. Is the backend running on port 5000?';
+  } else {
+    message = error.message;
+  }
+  const err = new Error(message) as ApiError;
+  err.status = status;
+  err.code = env?.error?.code;
+  err.details = env?.error?.details;
+  err.response = { status, data: { detail: message } };
+  return err;
+}
+
 api.interceptors.response.use(
   (res) => res,
-  (error) => {
-    if (error.response?.status === 401) {
+  (error: AxiosError<any>) => {
+    const url = error.config?.url ?? '';
+    const isAuthCall = url.startsWith('/auth/login') || url.startsWith('/auth/register');
+    if (error.response?.status === 401 && !isAuthCall) {
       localStorage.removeItem('tv_token');
       localStorage.removeItem('tv_user');
-      window.location.href = '/login';
+      if (window.location.pathname !== '/login') window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(toApiError(error));
   },
 );
 
+/** Unwraps the { success, data, error } envelope. */
+async function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
+  const res = await api.get(url, { params });
+  return res.data.data as T;
+}
+async function post<T>(url: string, body?: unknown): Promise<T> {
+  const res = await api.post(url, body ?? {});
+  return res.data.data as T;
+}
+async function patch<T>(url: string, body?: unknown): Promise<T> {
+  const res = await api.patch(url, body ?? {});
+  return res.data.data as T;
+}
+
+const num = (v: unknown, fallback = 0): number => {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 // ---------------------------------------------------------------------------
-// Mock data generators (stand-ins shaped exactly like real responses)
+// Road graph (cached once per page load). Nodes have no real names in the
+// dataset ("Junction n123"), so we label them by the streets that meet there.
 // ---------------------------------------------------------------------------
+export interface GraphIndex {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  nodesById: Map<string, GraphNode>;
+  edgesById: Map<string, GraphEdge>;
+  center: [number, number];
+  bounds: [[number, number], [number, number]];
+}
 
-const MOCK_EDGES: EdgeCongestion[] = [
-  { from: 'central_hub', to: 'north_gate', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.983, to_lng: 77.5946, congestion: 0.3, road_type: 'arterial', speed_limit: 60, distance_km: 1.3, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'south_plaza', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.96, to_lng: 77.5946, congestion: 0.45, road_type: 'arterial', speed_limit: 60, distance_km: 1.3, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'east_terminal', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.9716, to_lng: 77.608, congestion: 0.2, road_type: 'arterial', speed_limit: 50, distance_km: 1.5, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'west_market', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.9716, to_lng: 77.581, congestion: 0.6, road_type: 'arterial', speed_limit: 50, distance_km: 1.5, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'hospital_jn', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.9716, to_lng: 77.602, congestion: 0.25, road_type: 'local', speed_limit: 40, distance_km: 0.8, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'university_av', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.978, to_lng: 77.587, congestion: 0.5, road_type: 'arterial', speed_limit: 50, distance_km: 0.9, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'central_hub', to: 'inner_ring_south', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.964, to_lng: 77.594, congestion: 0.35, road_type: 'ring', speed_limit: 60, distance_km: 1.0, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'north_gate', to: 'tech_park', from_lat: 12.983, from_lng: 77.5946, to_lat: 12.985, to_lng: 77.61, congestion: 0.2, road_type: 'highway', speed_limit: 70, distance_km: 1.6, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'north_gate', to: 'airport_rd', from_lat: 12.983, from_lng: 77.5946, to_lat: 12.995, to_lng: 77.5946, congestion: 0.15, road_type: 'highway', speed_limit: 80, distance_km: 1.3, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'north_gate', to: 'university_av', from_lat: 12.983, from_lng: 77.5946, to_lat: 12.978, to_lng: 77.587, congestion: 0.4, road_type: 'arterial', speed_limit: 50, distance_km: 0.7, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'south_plaza', to: 'old_town', from_lat: 12.96, from_lng: 77.5946, to_lat: 12.958, to_lng: 77.578, congestion: 0.3, road_type: 'local', speed_limit: 40, distance_km: 1.4, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'south_plaza', to: 'lake_view', from_lat: 12.96, from_lng: 77.5946, to_lat: 12.967, to_lng: 77.587, congestion: 0.2, road_type: 'local', speed_limit: 40, distance_km: 0.9, source: 'SIMULATED', last_updated: new Date().toISOString() },
-  { from: 'silk_board', to: 'electronic_city', from_lat: 12.955, from_lng: 77.622, to_lat: 12.945, to_lng: 77.639, congestion: 0.85, road_type: 'highway', speed_limit: 70, distance_km: 2.8, source: 'SIMULATED', last_updated: new Date().toISOString() },
-];
+let graphPromise: Promise<GraphIndex> | null = null;
 
-const MOCK_INCIDENTS: Incident[] = [
-  {
-    id: 101,
-    type: 'accident',
-    status: 'verified',
-    lat: 12.9716,
-    lng: 77.5946,
-    description: 'Two-vehicle collision near Central Hub',
-    severity: 'high',
-    reporter: 'user_01',
-    affected_edges: [{ from: 'central_hub', to: 'north_gate' }, { from: 'central_hub', to: 'south_plaza' }],
-    nearby_node: 'central_hub',
-    created_at: new Date(Date.now() - 30 * 60000).toISOString(),
-    source: 'USER_REPORTED',
-  },
-  {
-    id: 102,
-    type: 'roadblock',
-    status: 'pending',
-    lat: 12.955,
-    lng: 77.622,
-    description: 'Roadblock reported at Silk Board junction',
-    severity: 'medium',
-    reporter: 'user_02',
-    affected_edges: [{ from: 'silk_board', to: 'electronic_city' }],
-    nearby_node: 'silk_board',
-    created_at: new Date(Date.now() - 10 * 60000).toISOString(),
-    source: 'USER_REPORTED',
-  },
-  {
-    id: 103,
-    type: 'congestion',
-    status: 'verified',
-    lat: 12.99,
-    lng: 77.579,
-    description: 'Heavy congestion on Industrial Zone approach',
-    severity: 'low',
-    reporter: 'user_03',
-    affected_edges: [{ from: 'industrial_zone', to: 'airport_rd' }],
-    nearby_node: 'industrial_zone',
-    created_at: new Date(Date.now() - 60 * 60000).toISOString(),
-    source: 'USER_REPORTED',
-  },
-];
+function buildGraphIndex(raw: { nodes: any[]; edges: any[] }): GraphIndex {
+  const streetsAt = new Map<string, string[]>();
+  const addStreet = (nodeId: string, name: string | null) => {
+    if (!name) return;
+    const list = streetsAt.get(nodeId) ?? [];
+    if (!list.includes(name)) list.push(name);
+    streetsAt.set(nodeId, list);
+  };
+  const edges: GraphEdge[] = raw.edges.map((e) => {
+    addStreet(e.from, e.name);
+    addStreet(e.to, e.name);
+    return { ...e, coords: e.coords ?? [] };
+  });
+  const nodes: GraphNode[] = raw.nodes.map((n) => {
+    const streets = streetsAt.get(n.id) ?? [];
+    const label = streets.length >= 2 ? `${streets[0]} × ${streets[1]}` : streets[0] ?? n.name ?? n.id;
+    return { id: n.id, lat: n.lat, lng: n.lng, name: n.name, signalised: !!n.signalised, label };
+  });
+  let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+  for (const n of nodes) {
+    minLat = Math.min(minLat, n.lat); maxLat = Math.max(maxLat, n.lat);
+    minLng = Math.min(minLng, n.lng); maxLng = Math.max(maxLng, n.lng);
+  }
+  return {
+    nodes,
+    edges,
+    nodesById: new Map(nodes.map((n) => [n.id, n])),
+    edgesById: new Map(edges.map((e) => [e.id, e])),
+    center: nodes.length ? [(minLat + maxLat) / 2, (minLng + maxLng) / 2] : DEFAULT_CENTER,
+    bounds: [[minLat, minLng], [maxLat, maxLng]],
+  };
+}
 
-const MOCK_ROUTES: RoutesResponse = {
-  shortest: {
-    label: 'Shortest',
-    color: '#06b6d4',
-    path: ['central_hub', 'south_plaza', 'lake_view', 'old_town', 'west_market'],
-    coords: [
-      { lat: 12.9716, lng: 77.5946 },
-      { lat: 12.96, lng: 77.5946 },
-      { lat: 12.967, lng: 77.587 },
-      { lat: 12.958, lng: 77.578 },
-      { lat: 12.9716, lng: 77.581 },
-    ],
-    total_distance_km: 3.9,
-    total_time_min: 12.5,
-    avg_congestion: 0.32,
-    incidents: 1,
-    fuel_liters: 0.31,
-    reliability_pct: 78,
+/** Centre of the bundled road network (data/graph.json), used before the graph loads. */
+export const DEFAULT_CENTER: [number, number] = [12.9345, 77.564];
+
+export function loadGraph(): Promise<GraphIndex> {
+  if (!graphPromise) {
+    graphPromise = get<{ nodes: any[]; edges: any[] }>('/map/graph')
+      .then(buildGraphIndex)
+      .catch((err) => {
+        graphPromise = null; // allow retry
+        throw err;
+      });
+  }
+  return graphPromise;
+}
+
+const nodeLabel = (g: GraphIndex, id: string) => g.nodesById.get(id)?.label ?? id;
+const edgeStreet = (g: GraphIndex, id: string | null | undefined) =>
+  (id && g.edgesById.get(id)?.name) || null;
+
+/** Demo-friendly starting points: every signalised junction plus the documented demo trip. */
+export async function getQuickPicks(): Promise<Array<{ node_id: string; label: string; lat: number; lng: number }>> {
+  const g = await loadGraph();
+  const ids = ['n2509', 'n2563', ...g.nodes.filter((n) => n.signalised).map((n) => n.id)];
+  const seen = new Set<string>();
+  return ids
+    .filter((id) => g.nodesById.has(id) && !seen.has(id) && seen.add(id))
+    .map((id) => {
+      const n = g.nodesById.get(id)!;
+      return { node_id: id, label: `${n.label}${n.signalised ? ' (signal)' : ''}`, lat: n.lat, lng: n.lng };
+    });
+}
+
+/** Nearest graph node to a clicked point (for labelling map picks). */
+export async function nearestNode(lat: number, lng: number): Promise<{ node: GraphNode; distance_m: number } | null> {
+  const g = await loadGraph();
+  let best: GraphNode | null = null;
+  let bestD = Infinity;
+  const kx = 111320 * Math.cos((lat * Math.PI) / 180);
+  for (const n of g.nodes) {
+    const dx = (n.lng - lng) * kx;
+    const dy = (n.lat - lat) * 110540;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return best ? { node: best, distance_m: Math.round(Math.sqrt(bestD)) } : null;
+}
+
+// ---------------------------------------------------------------------------
+// Adapters: backend payload -> frontend shape
+// ---------------------------------------------------------------------------
+function ratioToCongestion(ratio: number | null | undefined): number {
+  if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return -1;
+  return Math.min(1, Math.max(0, 1 - ratio));
+}
+
+function edgeToCongestion(g: GraphIndex, e: GraphEdge, seg?: any): EdgeCongestion {
+  const first = e.coords[0] ?? [g.nodesById.get(e.from)?.lat ?? 0, g.nodesById.get(e.from)?.lng ?? 0];
+  const last = e.coords[e.coords.length - 1] ?? [g.nodesById.get(e.to)?.lat ?? 0, g.nodesById.get(e.to)?.lng ?? 0];
+  return {
+    segment_id: e.id,
+    street_name: e.name ?? undefined,
+    from: nodeLabel(g, e.from),
+    to: nodeLabel(g, e.to),
+    from_lat: first[0],
+    from_lng: first[1],
+    to_lat: last[0],
+    to_lng: last[1],
+    coords: e.coords,
+    congestion: ratioToCongestion(seg?.speed_ratio),
+    congestion_level: seg?.congestion_level ?? 'no_data',
+    speed_kmph: seg?.speed_kmph ?? null,
+    road_type: e.road_type,
+    speed_limit: num(seg?.free_flow_kmph ?? e.free_flow_kmph),
+    distance_km: Math.round((e.length_m / 1000) * 100) / 100,
+    source: seg?.source ?? 'SIMULATED',
+    last_updated: seg?.timestamp_utc ?? undefined,
+  };
+}
+
+function toIncident(g: GraphIndex | null, i: any): Incident {
+  const street = g ? edgeStreet(g, i.segment_id) : null;
+  return {
+    id: i.id,
+    type: i.category,
+    status: i.status,
+    lat: num(i.lat),
+    lng: num(i.lng),
+    description: i.description ?? '',
+    severity: i.estimated_severity?.level ?? i.reported_severity,
+    reporter: i.reported_by?.name ?? 'Unknown',
+    affected_edges: [],
+    nearby_node: street ?? '',
+    created_at: i.created_at,
+    source: i.source,
+    segment_id: i.segment_id,
+    estimated_severity: i.estimated_severity ?? null,
+    lanes_blocked: i.lanes_blocked,
+    is_closure: i.is_closure,
+  };
+}
+
+const latLngList = (coords: Array<[number, number]> = []) => coords.map(([lat, lng]) => ({ lat, lng }));
+
+function toRoute(r: any): RouteResult {
+  return {
+    id: r.route_id,
+    type: r.type,
+    label: r.label,
+    color: routeColor(r.type ?? r.label),
+    path: r.node_ids ?? [],
+    coords: latLngList(r.coords),
+    total_distance_km: num(r.distance_km),
+    total_time_min: num(r.eta_min),
+    avg_congestion: num(r.congestion_pct) / 100,
+    incidents: num(r.incident_count),
+    fuel_liters: num(r.fuel_litres),
+    reliability_pct: num(r.reliability),
     source: 'SIMULATED',
-  },
-  fastest: {
-    label: 'Fastest',
-    color: '#a855f7',
-    path: ['central_hub', 'north_gate', 'airport_rd', 'industrial_zone'],
-    coords: [
-      { lat: 12.9716, lng: 77.5946 },
-      { lat: 12.983, lng: 77.5946 },
-      { lat: 12.995, lng: 77.5946 },
-      { lat: 12.99, lng: 77.579 },
-    ],
-    total_distance_km: 5.1,
-    total_time_min: 11.0,
-    avg_congestion: 0.18,
+    recommended: !!r.recommended,
+    explanation: r.explanation,
+    same_path_as: r.same_path_as ?? null,
+    closure_warnings: r.closure_warnings ?? [],
+    signals_on_route: r.signals_on_route,
+  };
+}
+
+function toEmergencyRoute(r: any, label: string, type: string): RouteResult {
+  return {
+    type,
+    label,
+    color: routeColor(type),
+    path: r?.node_ids ?? [],
+    coords: latLngList(r?.coords),
+    total_distance_km: num(r?.distance_km),
+    total_time_min: num(r?.eta_min),
+    avg_congestion: 0,
     incidents: 0,
-    fuel_liters: 0.41,
-    reliability_pct: 90,
+    fuel_liters: 0,
+    reliability_pct: 0,
     source: 'SIMULATED',
-  },
-  ai_optimized: {
-    label: 'AI-Optimized (Recommended)',
-    color: '#10b981',
-    path: ['central_hub', 'hospital_jn', 'metro_station', 'east_terminal'],
-    coords: [
-      { lat: 12.9716, lng: 77.5946 },
-      { lat: 12.9716, lng: 77.602 },
-      { lat: 12.975, lng: 77.602 },
-      { lat: 12.9716, lng: 77.608 },
-    ],
-    total_distance_km: 4.2,
-    total_time_min: 13.0,
-    avg_congestion: 0.22,
-    incidents: 0,
-    fuel_liters: 0.34,
-    reliability_pct: 88,
-    source: 'SIMULATED',
-  },
-};
-
-type PredictionItem = EdgeCongestion & {
-  predicted_congestion: number;
-  predicted_level: string;
-  confidence: number;
-  horizon_min: number;
-};
-
-const MOCK_PREDICTIONS: PredictionItem[] = [
-  { from: 'central_hub', to: 'north_gate', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.983, to_lng: 77.5946, current_congestion: 0.3, congestion: 0.3, predicted_congestion: 0.42, predicted_level: 'moderate', confidence: 0.72, horizon_min: 15, source: 'AI_PREDICTED', road_type: 'arterial', speed_limit: 60, distance_km: 1.3 },
-  { from: 'central_hub', to: 'south_plaza', from_lat: 12.9716, from_lng: 77.5946, to_lat: 12.96, to_lng: 77.5946, current_congestion: 0.45, congestion: 0.45, predicted_congestion: 0.58, predicted_level: 'moderate', confidence: 0.69, horizon_min: 15, source: 'AI_PREDICTED', road_type: 'arterial', speed_limit: 60, distance_km: 1.3 },
-  { from: 'silk_board', to: 'electronic_city', from_lat: 12.955, from_lng: 77.622, to_lat: 12.945, to_lng: 77.639, current_congestion: 0.85, congestion: 0.85, predicted_congestion: 0.92, predicted_level: 'high', confidence: 0.8, horizon_min: 15, source: 'AI_PREDICTED', road_type: 'highway', speed_limit: 70, distance_km: 2.8 },
-];
-
-const MOCK_SIGNALS: SignalResult = {
-  current_cycle_sec: 90,
-  optimized_cycle_sec: 110,
-  total_lost_time_sec: 20,
-  phases: [
-    { approach: 'North', vehicle_density: 35, queue_length: 12, lanes: 2, current_green_sec: 22, optimized_green_sec: 35, yellow_sec: 3, all_red_sec: 2, current_wait_sec: 45, optimized_wait_sec: 28, improvement_pct: 37.8 },
-    { approach: 'South', vehicle_density: 28, queue_length: 9, lanes: 2, current_green_sec: 22, optimized_green_sec: 28, yellow_sec: 3, all_red_sec: 2, current_wait_sec: 38, optimized_wait_sec: 32, improvement_pct: 15.8 },
-    { approach: 'East', vehicle_density: 42, queue_length: 16, lanes: 2, current_green_sec: 22, optimized_green_sec: 32, yellow_sec: 3, all_red_sec: 2, current_wait_sec: 52, optimized_wait_sec: 35, improvement_pct: 32.7 },
-    { approach: 'West', vehicle_density: 20, queue_length: 6, lanes: 2, current_green_sec: 22, optimized_green_sec: 15, yellow_sec: 3, all_red_sec: 2, current_wait_sec: 30, optimized_wait_sec: 22, improvement_pct: 26.7 },
-  ],
-  summary: {
-    avg_wait_before_sec: 41.2,
-    avg_wait_after_sec: 29.2,
-    total_improvement_pct: 29.1,
-    throughput_increase_pct: 12.0,
-  },
-};
-
-const MOCK_ANALYTICS: Analytics = {
-  incidents: { total: 24, pending: 6, verified: 14 },
-  routes: { total_calculated: 156 },
-  congestion: { high_segments: 4, avg_level: 0.34, total_segments: 18 },
-  network: { total_nodes: 19, total_edges: 27 },
-  timestamp: new Date().toISOString(),
-};
-
-const MOCK_USER: User = { id: 'u_1', name: 'Aryan', email: 'aryan@demo.in', role: 'user' };
+    signals_on_route: r?.signals_on_route,
+  };
+}
 
 // ---------------------------------------------------------------------------
-// API client functions — each falls back to mock when its switch is on
+// Public API used by the pages
 // ---------------------------------------------------------------------------
-
 export const apiClient = {
-  // ---- Auth (mock until backend provides /api/auth/*) ----
-  async login(email: string, _password: string): Promise<{ user: User; token: string }> {
-    if (USE_MOCK.auth) {
-      await mockDelay();
-      const role: UserRole = email.includes('admin') ? 'admin' : email.includes('emergency') ? 'emergency' : 'user';
-      const name = role === 'admin' ? 'Admin Demo' : role === 'emergency' ? 'Emergency Ops' : 'Commuter Demo';
-      const user: User = { id: `u_${role}`, name, email, role };
-      return { user, token: 'mock_token_' + role };
-    }
-    const res: AxiosResponse = await api.post('/auth/login', { email, password: _password });
-    return res.data;
+  // ----- Auth --------------------------------------------------------------
+  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+    return post('/auth/login', { email, password });
   },
-  async register(data: { name: string; email: string; password: string; role?: UserRole }): Promise<{ user: User; token: string }> {
-    if (USE_MOCK.auth) {
-      await mockDelay();
-      return { user: { ...MOCK_USER, ...data, role: data.role ?? 'user' }, token: 'mock_register_token' };
-    }
-    const res: AxiosResponse = await api.post('/auth/register', data);
-    return res.data;
+
+  async register(data: { name: string; email: string; password: string }): Promise<{ user: User; token: string }> {
+    return post('/auth/register', { name: data.name, email: data.email, password: data.password });
   },
+
   async me(): Promise<User | null> {
-    if (USE_MOCK.auth) {
-      const stored = localStorage.getItem('tv_user');
-      return stored ? JSON.parse(stored) : null;
-    }
-    const res: AxiosResponse = await api.get('/auth/me');
-    return res.data;
+    const d = await get<{ user: User }>('/auth/me');
+    return d.user ?? null;
   },
 
-  // ---- Map / graph ----
-  async getGraph(): Promise<CityNode[]> {
-    const res: AxiosResponse = await api.get('/nodes');
-    return res.data;
-  },
-  async getEdges(): Promise<EdgeCongestion[]> {
-    if (USE_MOCK.traffic) {
-      await mockDelay();
-      return MOCK_EDGES;
-    }
-    const res: AxiosResponse = await api.get('/graph');
-    return res.data;
-  },
+  // ----- Graph & traffic ---------------------------------------------------
+  loadGraph,
 
-  // ---- Traffic flow ----
   async getTrafficFlow(): Promise<EdgeCongestion[]> {
-    if (USE_MOCK.traffic) {
-      await mockDelay();
-      return MOCK_EDGES;
-    }
-    const res: AxiosResponse = await api.get('/congestion');
-    return res.data;
+    const [g, flow] = await Promise.all([loadGraph(), get<any>('/traffic/flow')]);
+    const bySeg = new Map<string, any>((flow.segments ?? []).map((s: any) => [s.segment_id, s]));
+    return g.edges.map((e) => edgeToCongestion(g, e, bySeg.get(e.id)));
   },
 
-  // ---- Routes ----
-  async compareRoutes(source: string, destination: string): Promise<RoutesResponse> {
-    if (USE_MOCK.routes) {
-      await mockDelay();
-      return MOCK_ROUTES;
-    }
-    const res: AxiosResponse = await api.post('/routes', { source, destination });
-    return res.data;
+  async getSimClock(): Promise<SimClock> {
+    return get('/traffic/clock');
   },
 
-  // ---- Incidents ----
+  async stepSimClock(action: 'next' | 'prev'): Promise<{ sim_time_utc: string }> {
+    return post('/traffic/clock', { action });
+  },
+
+  // ----- Routes ------------------------------------------------------------
+  async compareRoutes(source: RoutePoint, destination: RoutePoint): Promise<RouteComparison> {
+    const d = await post<any>('/routes/compare', { source, destination });
+    return {
+      routes: (d.routes ?? []).map(toRoute),
+      recommended_route_id: d.recommended_route_id ?? null,
+      source: d.source,
+      destination: d.destination,
+      sim_time_utc: d.sim_time_utc,
+    };
+  },
+
+  // ----- Incidents ---------------------------------------------------------
   async getIncidents(): Promise<Incident[]> {
-    if (USE_MOCK.incidents) {
-      await mockDelay();
-      return MOCK_INCIDENTS;
-    }
-    const res: AxiosResponse = await api.get('/incidents');
-    return res.data;
+    const [g, d] = await Promise.all([loadGraph().catch(() => null), get<{ incidents: any[] }>('/incidents')]);
+    return (d.incidents ?? []).map((i) => toIncident(g, i));
   },
+
   async createIncident(data: IncidentCreate): Promise<Incident> {
-    if (USE_MOCK.incidents) {
-      await mockDelay();
-      const newInc: Incident = {
-        id: Math.max(...MOCK_INCIDENTS.map((i) => Number(i.id))) + 1,
-        ...data,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        source: 'USER_REPORTED',
-        reporter: data.reporter || 'anonymous',
-        nearby_node: 'central_hub',
-        affected_edges: [],
-      };
-      MOCK_INCIDENTS.push(newInc);
-      return newInc;
-    }
-    const res: AxiosResponse = await api.post('/incidents', data);
-    return res.data;
+    const body: Record<string, unknown> = {
+      category: data.type,
+      reported_severity: data.severity,
+      lat: data.lat,
+      lng: data.lng,
+      description: data.description,
+    };
+    if (data.lanes_blocked !== undefined) body.lanes_blocked = data.lanes_blocked;
+    if (data.is_closure !== undefined) body.is_closure = data.is_closure;
+    const [g, d] = await Promise.all([loadGraph().catch(() => null), post<{ incident: any }>('/incidents', body)]);
+    return toIncident(g, d.incident);
   },
+
+  /** status: 'verified' | 'rejected' | 'resolved' — mapped to the backend's action endpoints. */
   async updateIncidentStatus(id: number | string, status: string): Promise<Incident> {
-    if (USE_MOCK.incidents) {
-      await mockDelay();
-      const inc = MOCK_INCIDENTS.find((i) => i.id === id);
-      if (!inc) throw new Error('Incident not found');
-      inc.status = status;
-      return inc;
-    }
-    const res: AxiosResponse = await api.patch(`/incidents/${id}`, { status });
-    return res.data;
-  },
-  async deleteIncident(id: number | string): Promise<void> {
-    if (USE_MOCK.incidents) {
-      await mockDelay();
-      const idx = MOCK_INCIDENTS.findIndex((i) => i.id === id);
-      if (idx >= 0) MOCK_INCIDENTS.splice(idx, 1);
-      return;
-    }
-    await api.delete(`/incidents/${id}`);
+    const action = ({ verified: 'verify', rejected: 'reject', resolved: 'resolve' } as Record<string, string>)[status];
+    if (!action) throw new Error(`Unsupported status change: ${status}`);
+    const d = await post<{ incident: any }>(`/incidents/${id}/${action}`);
+    return toIncident(await loadGraph().catch(() => null), d.incident);
   },
 
-  // ---- Predictions ----
-  async getPredictions(horizon = 15): Promise<PredictionItem[]> {
-    if (USE_MOCK.predictions) {
-      await mockDelay();
-      return MOCK_PREDICTIONS.map((p) => ({ ...p, horizon_min: horizon }));
-    }
-    const res: AxiosResponse = await api.post('/predict', { horizon_min: horizon });
-    return res.data.predictions ?? res.data;
-  },
-  async getPredictionMetrics() {
-    if (USE_MOCK.predictions) {
-      await mockDelay();
-      return { model_version: 'baseline', mae_kmph: 4.2, accuracy_pct: 78, baseline_mae_kmph: 6.1 };
-    }
-    const res: AxiosResponse = await api.get('/predictions/metrics');
-    return res.data;
+  async mergeIncident(id: number | string, intoId: number | string): Promise<Incident> {
+    const d = await post<{ incident: any }>(`/incidents/${id}/merge`, { into_id: Number(intoId) });
+    return toIncident(await loadGraph().catch(() => null), d.incident);
   },
 
-  // ---- Signals ----
-  async optimizeSignals(approaches: Array<{ name: string; vehicle_density: number; queue_length: number; lanes: number }>, currentCycle = 90): Promise<SignalResult> {
-    if (USE_MOCK.signals) {
-      await mockDelay();
-      return MOCK_SIGNALS;
-    }
-    const res: AxiosResponse = await api.post('/signals/optimize', { approaches, current_cycle: currentCycle });
-    return res.data;
+  async setIncidentSeverity(id: number | string, level: 'low' | 'medium' | 'high'): Promise<Incident> {
+    const d = await patch<{ incident: any }>(`/incidents/${id}/severity`, { level });
+    return toIncident(await loadGraph().catch(() => null), d.incident);
   },
 
-  // ---- Emergency ----
-  async emergencyRoutes(source: string, destination: string, vehicleType: EmergencyVehicle) {
-    if (USE_MOCK.emergency) {
-      await mockDelay();
-      return {
-        normal: MOCK_ROUTES.fastest,
-        emergency: { ...MOCK_ROUTES.fastest, label: 'Emergency Priority', total_time_min: 7.5, time_saved_min: 3.5, color: '#f43f5e', source: 'SIMULATION' },
-        simulation: true,
-      };
+  /** Admin only. Collects duplicate candidates for every open incident into unique pairs. */
+  async getDuplicateCandidates(openIncidents?: Incident[]): Promise<DuplicatePair[]> {
+    const g = await loadGraph().catch(() => null);
+    const list = openIncidents ?? (await apiClient.getIncidents());
+    const open = list.filter((i) => i.status === 'pending' || i.status === 'verified');
+    const results = await Promise.all(
+      open.map((inc) =>
+        get<{ candidates: any[] }>(`/incidents/${inc.id}/duplicates`)
+          .then((d) => ({ inc, candidates: d.candidates ?? [] }))
+          .catch(() => ({ inc, candidates: [] as any[] })),
+      ),
+    );
+    const pairs = new Map<string, DuplicatePair>();
+    for (const { inc, candidates } of results) {
+      for (const c of candidates) {
+        if (c.status && c.status !== 'pending') continue;
+        const other = toIncident(g, c.incident);
+        const key = [inc.id, other.id].map(String).sort().join('-');
+        const score = num(c.score);
+        if (!pairs.has(key) || pairs.get(key)!.score < score) {
+          pairs.set(key, { id: key, incidents: [inc, other], score });
+        }
+      }
     }
-    const res: AxiosResponse = await api.post('/emergency/routes', { source, destination, vehicle_type: vehicleType });
-    return res.data;
+    return [...pairs.values()].sort((a, b) => b.score - a.score);
   },
 
-  // ---- Admin ----
-  async getAdminOverview() {
-    if (USE_MOCK.admin) {
-      await mockDelay();
-      return { incidents: 24, pending: 6, verified: 14, routes: 156, active_signals: 12 };
-    }
-    const res: AxiosResponse = await api.get('/admin/overview');
-    return res.data;
+  /** Admin only. Simulates the network impact of an incident. */
+  async getNetworkImpact(incidentId: number | string, mode?: 'lane_blockage' | 'closure'): Promise<NetworkImpact> {
+    const d = await post<any>(`/incidents/${incidentId}/impact`, mode ? { mode } : {});
+    return {
+      incident_id: d.incident_id,
+      count: (d.affected_segments ?? []).length,
+      total_extra_delay_min: num(d.total_extra_delay_min),
+      detour_minutes: d.detour_minutes ?? null,
+      affected_segments: d.affected_segments ?? [],
+      diversion_route: d.diversion_route
+        ? { coords: d.diversion_route.coords ?? [], distance_km: num(d.diversion_route.distance_km), eta_min: num(d.diversion_route.eta_min) }
+        : null,
+    };
   },
-  async getAdminAnalytics() {
-    if (USE_MOCK.analytics) {
-      await mockDelay();
-      return MOCK_ANALYTICS;
+
+  // ----- Predictions -------------------------------------------------------
+  async getPredictions(horizon: 15 | 30 = 15): Promise<PredictionSet> {
+    const [g, d] = await Promise.all([loadGraph(), get<any>('/predictions', { horizon })]);
+    const items: PredictionItem[] = [];
+    for (const p of d.predictions ?? []) {
+      const e = g.edgesById.get(p.segment_id);
+      if (!e) continue;
+      const ff = num(e.free_flow_kmph, 1) || 1;
+      const base = edgeToCongestion(g, e);
+      const current = p.current_speed_kmph == null ? -1 : ratioToCongestion(num(p.current_speed_kmph) / ff);
+      const predicted = p.predicted_speed_kmph == null ? -1 : ratioToCongestion(num(p.predicted_speed_kmph) / ff);
+      items.push({
+        ...base,
+        congestion: current,
+        current_congestion: current,
+        predicted_congestion: predicted,
+        predicted_level: p.predicted_level ?? 'no_data',
+        confidence: p.confidence ?? null,
+        horizon_min: num(d.horizon_min, horizon),
+        source: 'AI_PREDICTED',
+        last_updated: p.target_time_utc,
+      });
     }
-    const res: AxiosResponse = await api.get('/admin/analytics');
-    return res.data;
+    return {
+      items,
+      model_version: d.model_version ?? 'unknown',
+      fallback_reason: d.fallback_reason ?? null,
+      sim_time_utc: d.sim_time_utc ?? null,
+    };
   },
-  async getDuplicateCandidates() {
-    if (USE_MOCK.admin) {
-      await mockDelay();
-      return [
-        { id: 'd1', incidents: [MOCK_INCIDENTS[0], { ...MOCK_INCIDENTS[0], id: 104 }], score: 0.82 },
-      ];
-    }
-    const res: AxiosResponse = await api.get('/incidents/duplicates');
-    return res.data;
+
+  async getPredictionMetrics(): Promise<PredictionMetrics> {
+    return get('/predictions/metrics');
   },
-  async getNetworkImpact(lat: number, lng: number, radius = 1.5) {
-    if (USE_MOCK.admin) {
-      await mockDelay();
-      return { affected_edges: MOCK_EDGES.slice(0, 4), count: 4, simulated: true };
-    }
-    const res: AxiosResponse = await api.get('/impact', { params: { lat, lng, radius } });
-    return res.data;
+
+  // ----- Signals -----------------------------------------------------------
+  async getJunctions(): Promise<Junction[]> {
+    const [g, d] = await Promise.all([loadGraph().catch(() => null), get<{ junctions: any[] }>('/signals/junctions')]);
+    const compass = (fromLat: number, fromLng: number, toLat: number, toLng: number) => {
+      // Direction the traffic comes FROM, relative to the junction.
+      const dy = fromLat - toLat;
+      const dx = (fromLng - toLng) * Math.cos((toLat * Math.PI) / 180);
+      const deg = (Math.atan2(dx, dy) * 180) / Math.PI;
+      return ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(((deg + 360) % 360) / 45) % 8];
+    };
+    return (d.junctions ?? []).map((j) => ({
+      ...j,
+      label: g ? nodeLabel(g, j.node_id) : j.name,
+      approaches: (j.approaches ?? []).map((a: any) => {
+        const street = (g && edgeStreet(g, a.edge_id)) || 'Unnamed road';
+        const from = g?.nodesById.get(a.from_node);
+        return { ...a, label: from ? `${street} (from ${compass(from.lat, from.lng, j.lat, j.lng)})` : street };
+      }),
+    }));
+  },
+
+  async simulateSignal(junctionId: string, mode: 'optimize' | 'emergency' = 'optimize', emergencyApproachId?: string): Promise<SignalSimulation> {
+    const body: Record<string, unknown> = { junction_id: junctionId, mode };
+    if (mode === 'emergency') body.emergency_approach_id = emergencyApproachId;
+    return post('/signals/simulate', body);
+  },
+
+  // ----- Emergency ---------------------------------------------------------
+  async emergencyRoutes(source: RoutePoint, destination: RoutePoint, vehicleType: EmergencyVehicle): Promise<EmergencyResult> {
+    const [d, g] = await Promise.all([
+      post<any>('/emergency/routes', { vehicle_type: vehicleType, source, destination }),
+      loadGraph().catch(() => null),
+    ]);
+    const emergency = toEmergencyRoute(d.emergency_route, 'Emergency priority', 'emergency');
+    emergency.time_saved_min = num(d.time_saved_min);
+    return {
+      normal: toEmergencyRoute(d.normal_route, 'Normal route', 'normal'),
+      emergency,
+      simulation: !!d.simulation,
+      time_saved_min: num(d.time_saved_min),
+      signal_wait_source: d.signal_wait_source,
+      assumptions: d.assumptions ?? [],
+      signals: (d.emergency_route?.signals ?? []).map((s: any) => ({ ...s, name: g ? nodeLabel(g, s.node_id) : s.name })),
+      from: d.from,
+      to: d.to,
+    };
+  },
+
+  // ----- Admin -------------------------------------------------------------
+  async getAdminOverview(): Promise<AdminOverview> {
+    const d = await get<any>('/admin/overview');
+    return { ...d, incidents: { total: num(d.counts?.incidents_total), pending: num(d.counts?.pending) } };
+  },
+
+  async getAdminAnalytics(): Promise<Analytics> {
+    const d = await get<any>('/admin/analytics');
+    return {
+      ...d,
+      congestion_by_hour: (d.congestion_by_hour ?? []).map((h: any) => ({
+        hour_ist: num(h.hour_ist),
+        avg_speed_ratio: num(h.avg_speed_ratio),
+        heavy_or_severe_share: num(h.heavy_or_severe_share),
+        samples: num(h.samples),
+      })),
+      incidents_by_type: (d.incidents_by_type ?? []).map((t: any) => ({ category: t.category, count: num(t.count) })),
+      signal_improvement: (d.signal_improvement ?? []).map((s: any) => ({
+        ...s,
+        avg_wait_before_s: num(s.avg_wait_before_s),
+        avg_wait_after_s: num(s.avg_wait_after_s),
+        improvement_pct: s.improvement_pct == null ? null : num(s.improvement_pct),
+      })),
+      emergency_time_saved: {
+        sessions: num(d.emergency_time_saved?.sessions),
+        avg_saved_min: num(d.emergency_time_saved?.avg_saved_min),
+        total_saved_min: num(d.emergency_time_saved?.total_saved_min),
+      },
+    };
+  },
+
+  async health(): Promise<{ status: string; database: string; ml_service: { status: string; model_version?: string; reason?: string } }> {
+    return get('/health');
   },
 };
 
-export default apiClient;
+export default api;

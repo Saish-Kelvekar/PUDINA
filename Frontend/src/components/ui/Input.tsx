@@ -10,9 +10,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
     return (
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {label && (
-          <label htmlFor={inputId} className="block text-xs font-medium text-slate-400 mb-1">
+          <label htmlFor={inputId} className="block pl-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
             {label}
           </label>
         )}
@@ -20,14 +20,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'block w-full px-3 py-2 text-sm text-slate-100 bg-slate-800 border rounded-lg transition-colors placeholder-slate-500',
-            error ? 'border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' : 'border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+            'block w-full rounded-full border bg-white/70 px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint shadow-[inset_0_1px_2px_rgba(60,45,30,0.06)] transition focus:outline-none focus:ring-2',
+            error
+              ? 'border-traffic-red/60 focus:ring-traffic-red/30'
+              : 'border-white/80 focus:ring-bronze/40 focus:border-bronze/40',
             className,
           )}
           aria-invalid={error ? 'true' : 'false'}
           {...props}
         />
-        {error && <span className="text-xs text-red-400">{error}</span>}
+        {error && <span className="block pl-1 text-xs text-traffic-red">{error}</span>}
       </div>
     );
   },
