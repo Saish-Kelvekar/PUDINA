@@ -234,24 +234,35 @@ Returns `{ session_id, vehicle_type, simulation: true, source: "SIMULATED", sim_
 - `time_saved_min` = normal ETA − emergency ETA. M1 shows the `assumptions` list and a "SIMULATION" banner. Every request is saved in `emergency_sessions`.
 - **Demo tip:** only 10 junctions have signals, so most trips pass none. Use a trip through signals, e.g. **n2509 → n2563** (≈ 1.1 min saved).
 
-### 2.12 Admin data
+### 2.12 Admin data (admin only)
 
-`GET /admin/overview` returns `{ counts: { incidents_total, pending, verified, rejected, merged, resolved, active_closures, duplicate_candidates, users }, recent_actions: [...], ml_service: { status: "up" | "down", model_version }, sim_time_utc }`.
+`GET /admin/overview` returns `{ counts: { incidents_total, pending, verified, rejected, merged, resolved, active_closures, duplicate_candidates, users, users_by_role }, recent_actions: [ { id, incident_id, action, details, by: { id, name }, created_at } ] (last 10), ml_service: { status: "up", model_version } | { status: "down", reason }, sim_time_utc }`.
 
-`GET /admin/analytics` returns `{ congestion_by_hour: [ { hour_ist, avg_speed_ratio, heavy_or_severe_share } ], incidents_by_type: [ { category, count } ], prediction_error: { "15": {...}, "30": {...} }, signal_improvement: [ { junction_id, name, avg_wait_before_s, avg_wait_after_s } ], emergency_time_saved: { sessions, avg_saved_min, total_saved_min }, source_note, generated_at }`.
+`GET /admin/analytics` returns:
+- `congestion_by_hour: [ { hour_ist, avg_speed_ratio, heavy_or_severe_share, samples } ]`: from all traffic data (cached after the first call)
+- `incidents_by_type: [ { category, count } ]`: excludes rejected and merged
+- `prediction_error: { "15": { mae_model_kmph, mae_baseline_kmph, improvement_pct }, "30": {...} }` and `prediction_model` (both `null` if the ML service is down)
+- `signal_improvement: [ { junction_id, name, avg_wait_before_s, avg_wait_after_s, improvement_pct } ]`: latest optimize run per junction (only junctions someone simulated)
+- `emergency_time_saved: { sessions, avg_saved_min, total_saved_min }`
+- `source_note`, `generated_at`
 
 ### 2.13 Socket.IO events
 
-Connect to the same server (`http://localhost:5000`). Server → client only.
+Same server and port: `io("http://localhost:5000")`. Server → client only.
 
 | Event | Payload | When |
 | --- | --- | --- |
+| `hello` | `{ message }` | right after connecting |
 | `incident:new` | `{ incident }` | any new report |
-| `incident:verified` | `{ incident }` | admin verifies one |
+| `incident:verified` | `{ incident }` | admin verifies one (routes now avoid it) |
 
-On `incident:verified`, the frontend should re-fetch `/incidents` (and the route, if one is shown).
+On `incident:verified`, re-fetch `/incidents` (and the route, if one is shown).
 
----
+### 2.14 Demo data ⭐
+
+`node scripts/seed-demo.js --reset` (in `backend/`) loads M3's `data/seed/users.json` and `incidents.json`: 3 users (`user@demo.test`, `admin@demo.test`, `ems@demo.test`, password `demo123`) and 15 incidents placed on real roads, with severity estimated and the 2 near-duplicate pairs detected. `--reset` deletes all incidents first. Without it, users are updated and incidents are skipped if any exist.
+
+**Demo picks** (sim time 09:00 IST): emergency trip **n2509 → n2563** (passes signals, ≈ 1.1 min saved); signal page **J-n2666** (120 → 63 s average wait).
 
 ## 3. Member 3's side
 

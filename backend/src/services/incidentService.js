@@ -10,6 +10,7 @@ const { simulateImpact } = require("./impactService");
 const { nearestSegment } = require("../utils/geo");
 const { withTransaction } = require("../config/tx");
 const AppError = require("../utils/AppError");
+const realtime = require("../realtime");
 
 const MAX_DISTANCE_FROM_ROAD_M = 200;
 const iso = (d) => (d ? new Date(d).toISOString() : null);
@@ -88,7 +89,9 @@ async function create(input, user) {
     }
     return { id: newId, found: count };
   });
-  return { incident: toApi(await incidents.findById(id)), possible_duplicates: found };
+  const incident = toApi(await incidents.findById(id));
+  realtime.emit("incident:new", { incident }); // after the save is committed
+  return { incident, possible_duplicates: found };
 }
 
 // ---------- read ----------
@@ -147,7 +150,9 @@ async function changeStatus(id, action, admin, details = {}) {
     await incidents.setStatus(db, id, t.to);
     return incidents.addLog(db, { incidentId: id, actorId: admin.id, action: t.log, details });
   });
-  return { incident: toApi(await incidents.findById(id)), log: logToApi(log, admin) };
+  const incident = toApi(await incidents.findById(id));
+  if (t.to === "verified") realtime.emit("incident:verified", { incident });
+  return { incident, log: logToApi(log, admin) };
 }
 
 // This incident is the same event as `intoId`: mark it merged into that one
