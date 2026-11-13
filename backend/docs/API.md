@@ -157,7 +157,7 @@ Needs login. Errors: `VALIDATION_ERROR` (bad points or weights, or source = dest
 `category`: `accident`, `breakdown`, `roadwork`, `flooding`, `closure`, `event`, `other`. `reported_severity`: `low`, `medium`, `high`.
 The backend finds the nearest road (the point must be within **200 m** of one, and `lanes_blocked` can't be more than that road's lanes), estimates severity (see below), looks for duplicates and returns `{ incident, possible_duplicates }` (a count). New incidents start as `pending` and **do not change routes until verified**. `category: "closure"` always sets `is_closure: true`. Needs login.
 
-⏳ Until Phase 3: `estimated_severity` is `null` (routing uses `reported_severity`) and `possible_duplicates` is `null`. M1: show "—" for both.
+`possible_duplicates` is how many earlier reports were flagged as possible duplicates (see 2.7). `estimated_severity` is filled in at once; routing uses it (or `reported_severity` if missing).
 
 `GET /incidents` query (all optional): `status=pending,verified`, `category=accident`, `since=<ISO time>`. Returns `{ count, incidents }`. Default: `pending`, `verified` and `resolved` (everything except `rejected` and `merged`), newest first.
 `GET /incidents/:id` returns `{ incident, logs }`.
@@ -183,18 +183,18 @@ source, created_at, updated_at, verified_at, resolved_at
 | `POST /incidents/:id/merge` | `{ "into_id": 101 }` — this incident is merged into 101 | pending, verified |
 | `PATCH /incidents/:id/severity` | `{ "level": "high" }` | any except rejected/merged |
 
-All return `{ incident, log }` (merge also returns `merged_into`). Wrong status → `CONFLICT`. Every action is written to `incident_logs`.
+All return `{ incident, log }` (merge also returns `merged_into`). Wrong status → `CONFLICT`; merging into itself → `VALIDATION_ERROR`; unknown `into_id` → `NOT_FOUND`. Merge needs the target to be pending or verified, and marks the duplicate pair `merged`. A severity set by an admin gets `confidence: 1` and evidence `"Set to <level> by admin"`. Every action is written to `incident_logs`.
 
 ### 2.7 `GET /incidents/:id/duplicates`
 
 Returns `{ incident_id, threshold, candidates: [ { incident, score, checks, weights, status } ] }`, highest score first.
-Score (0–1) = 0.35 × distance score + 0.25 × same category + 0.25 × time score + 0.15 × word overlap, where distance score = 1 − metres/200 (0 beyond 200 m) and time score = 1 − minutes/30 (0 beyond 30 min). Candidate if score ≥ `threshold` (0.6). **Never auto-merged.**
+Only reports within **200 m and 30 minutes** of each other (and still pending or verified) are compared. Score (0–1) = 0.35 × distance score + 0.25 × same category + 0.25 × time score + 0.15 × word overlap, where distance score = 1 − metres/200 and time score = 1 − minutes/30. Word overlap (Jaccard) ignores case, punctuation, words under 3 letters and filler words. Candidate if score ≥ `threshold` (0.6). Checked automatically when a report is created; the pair shows up from **either** incident. `status`: `pending`, `merged` or `dismissed`. **Never auto-merged.** Admin only.
 
 ### 2.8 `POST /incidents/:id/impact`
 
 Body: `{ "mode": "lane_blockage" }` or `{ "mode": "closure" }` (default: closure if `is_closure`, else lane blockage).
 Returns `{ incident_id, mode, speed_factor, max_hops, affected_segments: [ { segment_id, hops, speed_before_kmph, speed_after_kmph, extra_delay_s, congestion_level_after } ], total_extra_delay_min, detour_minutes, hop_factors, diversion_route: { from_node, to_node, node_ids, edge_ids, coords, distance_km, eta_min }, blocked_route: { node_ids, edge_ids, eta_min_before, eta_min_after }, source: "SIMULATED", computed_at }`.
-Speed is multiplied by `hop_factors`: incident road (hop 0) × 0.5 for lane blockage, then × 0.85 / 0.93 / 0.97 for roads 1 / 2 / 3 junctions away (found by breadth-first search). Closure mode removes the road instead. The diversion is the fastest way between the two ends of the incident road without using it.
+Admin only. In closure mode the incident road shows `speed_after_kmph: 0`, `extra_delay_s: null`, `congestion_level_after: "closed"` (**M1: draw it black or dashed**) and `blocked_route.eta_min_after: null`. If the road is a dead end, `diversion_route` and `detour_minutes` are `null`. Speed is multiplied by `hop_factors`: incident road (hop 0) × 0.5 for lane blockage, then × 0.85 / 0.93 / 0.97 for roads 1 / 2 / 3 junctions away (found by breadth-first search). Closure mode removes the road instead. The diversion is the fastest way between the two ends of the incident road without using it.
 
 ### 2.9 Predictions
 

@@ -60,4 +60,57 @@ async function findLogs(incidentId) {
   return r.rows;
 }
 
-module.exports = { findActiveVerified, findById, list, create, setStatus, addLog, findLogs };
+
+async function setSeverity(db, id, { level, confidence, evidence }) {
+  await db.query(
+    `UPDATE incidents SET estimated_severity = $2, severity_confidence = $3, severity_evidence = $4, updated_at = now()
+     WHERE id = $1`, [id, level, confidence, JSON.stringify(evidence)]);
+}
+
+async function setMerged(db, id, intoId) {
+  await db.query(`UPDATE incidents SET status = 'merged', merged_into = $2, updated_at = now() WHERE id = $1`, [id, intoId]);
+}
+
+// Earlier pending/verified reports within `minutes` of a time (duplicate candidates)
+async function findRecentActive(db, { excludeId, around, minutes }) {
+  const r = await db.query(
+    `SELECT id, category, description, lat, lng, created_at FROM incidents
+     WHERE id <> $1 AND status IN ('pending', 'verified')
+       AND created_at BETWEEN $2::timestamptz - make_interval(mins => $3) AND $2::timestamptz + make_interval(mins => $3)`,
+    [excludeId, around, minutes]);
+  return r.rows;
+}
+
+async function saveDuplicate(db, { incidentId, candidateId, score, checks }) {
+  await db.query(
+    `INSERT INTO incident_duplicates (incident_id, candidate_id, score, checks) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (incident_id, candidate_id) DO UPDATE SET score = EXCLUDED.score, checks = EXCLUDED.checks`,
+    [incidentId, candidateId, score, JSON.stringify(checks)]);
+}
+
+// Duplicate pairs involving this incident, in either direction
+async function findDuplicates(id) {
+  const r = await query(
+    `SELECT d.id, d.score, d.checks, d.status,
+            CASE WHEN d.incident_id = $1 THEN d.candidate_id ELSE d.incident_id END AS other_id
+     FROM incident_duplicates d
+     WHERE (d.incident_id = $1 OR d.candidate_id = $1)
+     ORDER BY d.score DESC`, [id]);
+  return r.rows;
+}
+
+async function setDuplicateStatus(db, a, b, status) {
+  await db.query(
+    `UPDATE incident_duplicates SET status = $3
+     WHERE (incident_id = $1 AND candidate_id = $2) OR (incident_id = $2 AND candidate_id = $1)`, [a, b, status]);
+}
+
+async function countPendingDuplicates() {
+  const r = await query("SELECT count(*)::int AS n FROM incident_duplicates WHERE status = 'pending'");
+  return r.rows[0].n;
+}
+
+module.exports = {
+  findActiveVerified, findById, list, create, setStatus, addLog, findLogs,
+  setSeverity, setMerged, findRecentActive, saveDuplicate, findDuplicates, setDuplicateStatus, countPendingDuplicates,
+};

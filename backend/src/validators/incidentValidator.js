@@ -44,4 +44,25 @@ function parseId(raw) {
   return id;
 }
 
-module.exports = { validateCreate, validateListQuery, parseId, CATEGORIES };
+function validateMerge(b) {
+  const intoId = Number(b && b.into_id);
+  if (!Number.isInteger(intoId) || intoId <= 0) {
+    throw new AppError(400, "VALIDATION_ERROR", "into_id must be the id of the incident to merge into");
+  }
+  return intoId;
+}
+
+function validateSeverity(b) {
+  if (!b || !SEVERITIES.includes(b.level)) throw new AppError(400, "VALIDATION_ERROR", "level must be low, medium or high");
+  return b.level;
+}
+
+function validateImpact(b) {
+  const mode = b && b.mode;
+  if (mode !== undefined && !["lane_blockage", "closure"].includes(mode)) {
+    throw new AppError(400, "VALIDATION_ERROR", "mode must be lane_blockage or closure");
+  }
+  return mode;
+}
+
+module.exports = { validateCreate, validateListQuery, validateMerge, validateSeverity, validateImpact, parseId, CATEGORIES };
