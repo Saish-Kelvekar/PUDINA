@@ -354,7 +354,7 @@ export default function RoutePlanner() {
                         isChosen
                           ? 'bg-traffic-green text-white hover:bg-traffic-green/90'
                           : isSel
-                            ? 'bg-white/15 text-sand-50 hover:bg-white/25'
+                            ? 'bg-bronze-light text-[#14110E] hover:bg-bronze-light/90'
                             : 'bg-ink text-sand-50 hover:bg-ink/85',
                       )}
                       title={isChosen ? 'Click again to un-choose' : 'Save this as the route you used'}

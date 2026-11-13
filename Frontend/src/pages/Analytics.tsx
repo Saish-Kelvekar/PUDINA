@@ -20,7 +20,7 @@ import {
 import { Activity, Clock, TrendingUp, AlertTriangle, Hourglass, CheckCircle2, Ambulance, Route as RouteIcon } from 'lucide-react';
 import { routeColor } from '@/lib/utils';
 
-const COLORS = ['#1F1D1B', '#9A6B4F', '#C49A7A', '#5E8C61', '#D4A93C', '#7E6A9A', '#4A6A8A'];
+const COLORS = ['#E9E4DE', '#E3A034', '#2A8E7E', '#F0BE6A', '#9D88C2', '#6A8FB8', '#5FBFAE'];
 
 export default function Analytics() {
   const { add } = useToast() as any;
@@ -175,13 +175,13 @@ export default function Analytics() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={hourly} margin={{ top: 10, right: 0, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="2 6" stroke="#CFC4B6" vertical={false} />
-                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#6B635A' }} axisLine={false} tickLine={false} interval={1} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6B635A' }} axisLine={false} tickLine={false} unit="%" />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(154,107,79,0.08)' }} />
+                  <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#B3ADA8' }} axisLine={false} tickLine={false} interval={1} />
+                  <YAxis tick={{ fontSize: 11, fill: '#B3ADA8' }} axisLine={false} tickLine={false} unit="%" />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(227,160,52,0.08)' }} />
                   <Bar dataKey="value" radius={[8, 8, 8, 8]} maxBarSize={22} isAnimationActive={false}>
                     {hourly.map((h) => (
-                      <Cell key={h.hour} fill={h.value === peak ? '#9A6B4F' : '#1F1D1B'} />
+                      <Cell key={h.hour} fill={h.value === peak ? '#E3A034' : '#E9E4DE'} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -250,10 +250,10 @@ export default function Analytics() {
           <h3 className="display mb-5 text-2xl">Prediction error</h3>
           {pe15 || pe30 ? (
             <div className="space-y-4">
-              {pe15 && metric('15 min · model MAE', `${pe15.mae_model_kmph} km/h`, (pe15.mae_model_kmph / maxMae) * 100, '#1F1D1B')}
-              {pe15 && metric('15 min · baseline MAE', `${pe15.mae_baseline_kmph} km/h`, (pe15.mae_baseline_kmph / maxMae) * 100, '#C49A7A')}
-              {pe30 && metric('30 min · model MAE', `${pe30.mae_model_kmph} km/h`, (pe30.mae_model_kmph / maxMae) * 100, '#1F1D1B')}
-              {pe30 && metric('30 min · baseline MAE', `${pe30.mae_baseline_kmph} km/h`, (pe30.mae_baseline_kmph / maxMae) * 100, '#C49A7A')}
+              {pe15 && metric('15 min · model MAE', `${pe15.mae_model_kmph} km/h`, (pe15.mae_model_kmph / maxMae) * 100, '#E9E4DE')}
+              {pe15 && metric('15 min · baseline MAE', `${pe15.mae_baseline_kmph} km/h`, (pe15.mae_baseline_kmph / maxMae) * 100, '#E3A034')}
+              {pe30 && metric('30 min · model MAE', `${pe30.mae_model_kmph} km/h`, (pe30.mae_model_kmph / maxMae) * 100, '#E9E4DE')}
+              {pe30 && metric('30 min · baseline MAE', `${pe30.mae_baseline_kmph} km/h`, (pe30.mae_baseline_kmph / maxMae) * 100, '#E3A034')}
             </div>
           ) : (
             <p className="text-sm text-ink-muted">The ML service is offline, so model metrics are unavailable.</p>

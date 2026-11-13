@@ -63,7 +63,7 @@ export default function EmergencyRouting() {
     () => (result ? [result.normal, { ...result.emergency, recommended: true }] : NO_ROUTES),
     [result],
   );
-  const pins = useMemo(() => pickPins(from, to, '#B8453A'), [from, to]);
+  const pins = useMemo(() => pickPins(from, to, '#E0604F'), [from, to]);
 
   const fetchRoutes = useCallback(async () => {
     if (!from || !to) {

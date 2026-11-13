@@ -394,7 +394,7 @@ export default function LiveCamera() {
 
       {/* ---------- Right: live view / preview ---------- */}
       <section className="flex min-h-[360px] flex-1 flex-col gap-4">
-        <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-[1.75rem] bg-ink">
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden rounded-[1.75rem] border border-white/80 bg-black/60">
           {/* Live view stays mounted so the stream keeps running behind the preview. */}
           <video
             ref={videoRef}
@@ -411,7 +411,7 @@ export default function LiveCamera() {
             ))}
 
           {!cameraOn && !captured && (
-            <div className="max-w-sm px-6 text-center text-sand-300">
+            <div className="max-w-sm px-6 text-center text-ink-muted">
               <CameraOff className="mx-auto mb-3 h-10 w-10 opacity-60" />
               {cameraError ? (
                 <p className="text-sm text-traffic-red">{cameraError}</p>

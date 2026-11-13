@@ -13,10 +13,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'group inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200 focus-visible:outline-2 focus-visible:outline-bronze focus-visible:outline-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
 
     const variants = {
-      primary: 'bg-ink text-sand-50 hover:bg-ink-soft shadow-[0_10px_24px_-12px_rgba(31,29,27,0.7)]',
+      primary: 'bg-ink text-sand-50 hover:bg-ink-soft shadow-[0_10px_24px_-12px_rgba(0,0,0,0.7)]',
       secondary: 'bg-white/70 text-ink border border-white hover:bg-white shadow-panel',
       ghost: 'bg-transparent text-ink-muted hover:bg-white/60 hover:text-ink',
-      danger: 'bg-traffic-red text-sand-50 hover:bg-[#a33b31] shadow-[0_10px_24px_-12px_rgba(184,69,58,0.7)]',
+      danger: 'bg-traffic-red text-sand-50 hover:bg-[#c95040] shadow-[0_10px_24px_-12px_rgba(184,69,58,0.7)]',
     };
 
     const sizes = {

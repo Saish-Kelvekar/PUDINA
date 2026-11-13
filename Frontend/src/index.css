@@ -3,15 +3,52 @@
 @tailwind utilities;
 
 @layer base {
+  /* ---- Night theme (default) ----
+     Deep Espresso canvas, translucent glass, white text, amber + teal accents.
+     Classes like text-ink / bg-sand-50 read these, so the whole app follows. */
   :root {
-    --color-bg: #EDE8E1;
-    --color-surface: rgba(255, 255, 255, 0.6);
-    --color-surface-hover: rgba(255, 255, 255, 0.8);
-    --color-border: rgba(255, 255, 255, 0.7);
-    --color-text: #1F1D1B;
-    --color-text-muted: #6B635A;
-    --color-primary: #1F1D1B;
-    --color-accent: #9A6B4F;
+    --tv-ink: 255 255 255;          /* Crisp White: primary text */
+    --tv-ink-soft: 231 226 220;
+    --tv-ink-muted: 179 173 168;    /* Muted Sand: secondary text */
+    --tv-ink-faint: 133 127 121;
+    --tv-sand-50: 20 17 14;         /* Deep Espresso (text on light pills) */
+    --tv-sand-100: 28 24 21;
+    --tv-sand-200: 36 32 27;
+    --tv-sand-300: 87 80 74;
+    --tv-sand-400: 110 103 96;
+    --tv-sand-500: 138 131 124;
+    --tv-accent: 227 160 52;        /* Traffic Amber */
+    --tv-accent-light: 240 190 106;
+    --tv-accent-dark: 201 138 34;
+    --tv-white-bg: 0.145;           /* bg-white/55 -> ~8% (Translucent Slate) */
+    --tv-white-border: 0.19;        /* border-white/80 -> ~15% */
+
+    --color-bg: #14110E;
+    --color-text: #FFFFFF;
+    color-scheme: dark;
+  }
+
+  /* ---- Light surfaces (login card) ----
+     Warm Alabaster card, Soft Black text, Obsidian buttons, near-white inputs. */
+  .theme-light,
+  .glass-dark {
+    --tv-ink: 28 25 23;             /* Soft Black / Obsidian */
+    --tv-ink-soft: 58 54 50;
+    --tv-ink-muted: 107 99 90;
+    --tv-ink-faint: 154 144 135;
+    --tv-sand-50: 248 246 244;      /* Elevated Light (inputs) */
+    --tv-sand-100: 243 239 234;
+    --tv-sand-200: 234 229 223;     /* Warm Alabaster */
+    --tv-sand-300: 226 218 207;
+    --tv-sand-400: 207 196 182;
+    --tv-sand-500: 181 168 152;
+    --tv-accent: 168 112 26;        /* darker amber so it is readable on light */
+    --tv-accent-light: 227 160 52;
+    --tv-accent-dark: 138 90 16;
+    --tv-white-bg: 1;
+    --tv-white-border: 1;
+    color: rgb(var(--tv-ink));
+    color-scheme: light;
   }
 
   html,
@@ -27,10 +64,12 @@
   }
 
   body {
-    @apply bg-sand-200 text-ink antialiased selection:bg-bronze/30 selection:text-ink;
+    @apply text-ink antialiased selection:bg-bronze/30 selection:text-ink;
+    background-color: #14110E;
+    /* soft amber + teal glows, like blurred city lights */
     background-image:
-      radial-gradient(1200px 600px at 10% -10%, rgba(255, 255, 255, 0.85), transparent 60%),
-      radial-gradient(900px 500px at 110% 110%, rgba(196, 154, 122, 0.22), transparent 60%);
+      radial-gradient(1100px 600px at 5% -10%, rgba(227, 160, 52, 0.10), transparent 60%),
+      radial-gradient(900px 520px at 105% 110%, rgba(42, 142, 126, 0.12), transparent 60%);
     background-attachment: fixed;
   }
 
@@ -39,7 +78,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #9A6B4F;
+    outline: 2px solid #E3A034;
     outline-offset: 2px;
   }
 
@@ -57,11 +96,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(107, 99, 90, 0.25);
+    background: rgba(255, 255, 255, 0.14);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 99, 90, 0.45);
+    background: rgba(255, 255, 255, 0.28);
   }
 
   input[type='number']::-webkit-inner-spin-button {
@@ -88,8 +127,11 @@
   .glass-strong {
     @apply bg-white/75 backdrop-blur-xl border border-white/80 shadow-glass;
   }
+  /* Obsidian card (uses the light-scope colours, so text inside is light). */
   .glass-dark {
-    @apply bg-ink/85 backdrop-blur-xl border border-white/10 text-sand-100 shadow-frame;
+    @apply backdrop-blur-xl border text-sand-100 shadow-frame;
+    background-color: rgba(38, 30, 20, 0.94);   /* obsidian with a faint amber glow */
+    border-color: rgba(227, 160, 52, 0.35);
   }
 
   /* Legacy helpers kept for compatibility */
@@ -131,7 +173,7 @@
   /* Form fields */
   .input,
   .select {
-    @apply block w-full rounded-full border border-white/80 bg-white/70 px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint shadow-[inset_0_1px_2px_rgba(60,45,30,0.06)] transition focus:outline-none focus:ring-2 focus:ring-bronze/40 focus:border-bronze/40;
+    @apply block w-full rounded-full border border-white/80 bg-white/70 px-4 py-2.5 text-sm text-ink placeholder:text-ink-faint shadow-[inset_0_1px_2px_rgba(0,0,0,0.12)] transition focus:outline-none focus:ring-2 focus:ring-bronze/50 focus:border-bronze/50;
   }
 
   .badge {
@@ -167,22 +209,20 @@
   }
 }
 
-/* ---------- Leaflet theming ---------- */
+/* ---------- Leaflet theming (night) ---------- */
 .leaflet-container {
   font-family: 'Manrope', system-ui, sans-serif;
-  background: #E8E2D9;
+  background: #14110E;
 }
 .leaflet-tile-pane {
-  /* Warm the grey basemap by letting the warm container background show through.
-     (A CSS filter here would force every tile to be re-rasterised on each zoom frame.) */
-  opacity: 0.86;
+  opacity: 0.9;
 }
 
-/* Glass panels floating over a moving map: smaller blur radius, slightly more opaque.
+/* Glass panels floating over a moving map: smaller blur radius, more opaque.
    Looks the same, but is much cheaper to recompute while the map pans and zooms. */
 .map-stage .glass,
 .map-stage .glass-strong {
-  background-color: rgba(255, 255, 255, 0.72);
+  background-color: rgba(20, 17, 14, 0.78);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
@@ -191,22 +231,22 @@
   backdrop-filter: blur(12px);
 }
 .leaflet-control-attribution {
-  background: rgba(251, 249, 246, 0.7) !important;
+  background: rgba(20, 17, 14, 0.7) !important;
   backdrop-filter: blur(8px);
   border-radius: 999px 0 0 0;
   font-size: 9px;
-  color: #6B635A;
+  color: #B3ADA8;
   padding: 0 8px !important;
 }
 .leaflet-control-attribution a {
-  color: #6B635A;
+  color: #B3ADA8;
 }
 .leaflet-control-zoom.leaflet-bar {
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 999px !important;
   overflow: hidden;
-  box-shadow: 0 10px 30px -12px rgba(60, 45, 30, 0.35) !important;
-  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6) !important;
+  background: rgba(20, 17, 14, 0.75);
   backdrop-filter: blur(14px);
 }
 .leaflet-control-zoom a {
@@ -214,20 +254,21 @@
   height: 36px !important;
   line-height: 36px !important;
   background: transparent !important;
-  color: #1F1D1B !important;
-  border-bottom: 1px solid rgba(31, 29, 27, 0.06) !important;
+  color: #FFFFFF !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   font-weight: 400;
 }
 .leaflet-control-zoom a:hover {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
+/* Popups use the Warm Alabaster card */
 .leaflet-popup-content-wrapper {
-  background: rgba(251, 249, 246, 0.94);
+  background: rgba(234, 229, 223, 0.97);
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 18px;
-  color: #1F1D1B;
-  box-shadow: 0 20px 50px -20px rgba(60, 45, 30, 0.45);
+  color: #1C1917;
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.7);
 }
 .leaflet-popup-content {
   margin: 14px 16px;
@@ -239,10 +280,10 @@
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 400;
   font-size: 15px;
-  color: #1F1D1B;
+  color: #1C1917;
 }
 .leaflet-popup-tip {
-  background: rgba(251, 249, 246, 0.94);
+  background: rgba(234, 229, 223, 0.97);
 }
 .leaflet-container a.leaflet-popup-close-button {
   color: #6B635A;

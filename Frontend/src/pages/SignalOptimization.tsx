@@ -82,7 +82,7 @@ export default function SignalOptimization() {
     : 1;
   const queueBy = new Map(result?.queues.map((q) => [q.approach_id, q]) ?? []);
   const reasonBy = new Map(result?.reasons.map((r) => [r.approach_id, r.text]) ?? []);
-  const pins: MapPin[] = junction ? [{ lat: junction.lat, lng: junction.lng, label: '●', color: '#B8453A', title: junction.label }] : [];
+  const pins: MapPin[] = junction ? [{ lat: junction.lat, lng: junction.lng, label: '●', color: '#E0604F', title: junction.label }] : [];
   const waitChange = result?.improvement.avg_wait_change_pct ?? 0;
 
   return (
