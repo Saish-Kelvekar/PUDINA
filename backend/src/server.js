@@ -4,7 +4,8 @@ const app = require("./app");
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app); // plain http server, so Socket.IO can join it in Phase 4
-
+const graphService = require("./services/graphService");
+graphService.loadGraph();
 server.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });
