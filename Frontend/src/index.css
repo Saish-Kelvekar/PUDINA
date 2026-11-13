@@ -22,10 +22,54 @@
     --tv-accent-dark: 201 138 34;
     --tv-white-bg: 0.145;           /* bg-white/55 -> ~8% (Translucent Slate) */
     --tv-white-border: 0.19;        /* border-white/80 -> ~15% */
+    --tv-green: 42 142 126;         /* Signal Teal */
+    --tv-yellow: 227 160 52;        /* Traffic Amber */
+    --tv-orange: 224 123 57;
+    --tv-red: 224 96 79;
+    --tv-grey: 143 136 130;
+    --tv-blue: 106 143 184;
+    --tv-purple: 157 136 194;
+    --tv-shadow-panel: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px -12px rgb(0 0 0 / 0.45);
+    --tv-shadow-panel-hover: 0 2px 4px rgb(0 0 0 / 0.25), 0 18px 40px -16px rgb(0 0 0 / 0.55);
+    --tv-shadow-glass: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6);
+    --tv-shadow-frame: 0 30px 80px -30px rgb(0 0 0 / 0.7);
 
     --color-bg: #14110E;
     --color-text: #FFFFFF;
     color-scheme: dark;
+  }
+
+  /* ---- Day theme (toggle): the original warm cream look ---- */
+  :root.theme-day {
+    --tv-ink: 31 29 27;
+    --tv-ink-soft: 58 54 50;
+    --tv-ink-muted: 107 99 90;
+    --tv-ink-faint: 154 144 135;
+    --tv-sand-50: 251 249 246;
+    --tv-sand-100: 245 241 235;
+    --tv-sand-200: 237 232 225;
+    --tv-sand-300: 226 218 207;
+    --tv-sand-400: 207 196 182;
+    --tv-sand-500: 181 168 152;
+    --tv-accent: 154 107 79;        /* bronze */
+    --tv-accent-light: 196 154 122;
+    --tv-accent-dark: 122 80 56;
+    --tv-white-bg: 1;
+    --tv-white-border: 1;
+    --tv-green: 94 140 97;
+    --tv-yellow: 212 169 60;
+    --tv-orange: 208 123 58;
+    --tv-red: 184 69 58;
+    --tv-grey: 163 155 146;
+    --tv-blue: 74 106 138;
+    --tv-purple: 126 106 154;
+    --tv-shadow-panel: 0 1px 2px rgb(60 45 30 / 0.04), 0 8px 24px -12px rgb(60 45 30 / 0.18);
+    --tv-shadow-panel-hover: 0 2px 4px rgb(60 45 30 / 0.06), 0 18px 40px -16px rgb(60 45 30 / 0.28);
+    --tv-shadow-glass: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 20px 50px -20px rgb(60 45 30 / 0.35);
+    --tv-shadow-frame: 0 30px 80px -30px rgb(60 45 30 / 0.45);
+    --color-bg: #EDE8E1;
+    --color-text: #1F1D1B;
+    color-scheme: light;
   }
 
   /* ---- Light surfaces (login card) ----
@@ -57,7 +101,7 @@
     height: 100%;
     background-color: var(--color-bg);
     color: var(--color-text);
-    font-family: 'Manrope', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    font-family: 'Manrope', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -71,6 +115,19 @@
       radial-gradient(1100px 600px at 5% -10%, rgba(227, 160, 52, 0.10), transparent 60%),
       radial-gradient(900px 520px at 105% 110%, rgba(42, 142, 126, 0.12), transparent 60%);
     background-attachment: fixed;
+  }
+
+  .theme-day body {
+    background-color: #EDE8E1;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(255, 255, 255, 0.85), transparent 60%),
+      radial-gradient(900px 500px at 110% 110%, rgba(196, 154, 122, 0.22), transparent 60%);
+  }
+  .theme-day :focus-visible {
+    outline-color: #9A6B4F;
+  }
+  .theme-day ::-webkit-scrollbar-thumb {
+    background: rgba(107, 99, 90, 0.25);
   }
 
   * {
@@ -132,6 +189,18 @@
     @apply backdrop-blur-xl border text-sand-100 shadow-frame;
     background-color: rgba(38, 30, 20, 0.94);   /* obsidian with a faint amber glow */
     border-color: rgba(227, 160, 52, 0.35);
+  }
+  .theme-day .glass-dark {
+    background-color: rgba(31, 29, 27, 0.85);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Active sidebar icon: amber at night, charcoal by day */
+  .nav-active {
+    @apply bg-bronze text-sand-50 shadow-[0_10px_24px_-10px_rgba(227,160,52,0.6)];
+  }
+  .theme-day .nav-active {
+    @apply bg-ink shadow-[0_10px_20px_-10px_rgba(31,29,27,0.8)];
   }
 
   /* Legacy helpers kept for compatibility */
@@ -204,6 +273,37 @@
 }
 
 @layer utilities {
+  /* Indian scripts: wide letter-spacing and italics look broken, so relax them */
+  :lang(hi) [class*='tracking-'],
+  :lang(kn) [class*='tracking-'],
+  :lang(mr) [class*='tracking-'],
+  :lang(hi) .eyebrow,
+  :lang(kn) .eyebrow,
+  :lang(mr) .eyebrow {
+    letter-spacing: 0.02em !important;
+  }
+  /* Indian scripts need a little more size to stay readable at small sizes */
+  :lang(hi) .eyebrow, :lang(mr) .eyebrow,
+  :lang(hi) .text-\[9px\], :lang(mr) .text-\[9px\],
+  :lang(hi) .text-\[10px\], :lang(mr) .text-\[10px\] {
+    font-size: 11px;
+  }
+  :lang(kn) .eyebrow,
+  :lang(kn) .text-\[9px\],
+  :lang(kn) .text-\[10px\],
+  :lang(kn) .text-\[11px\] {
+    font-size: 12px;
+  }
+  :lang(kn) .text-xs { font-size: 13px; }
+  :lang(hi) .italic,
+  :lang(kn) .italic,
+  :lang(mr) .italic,
+  :lang(hi) .accent-word,
+  :lang(kn) .accent-word,
+  :lang(mr) .accent-word {
+    font-style: normal;
+  }
+
   .text-shadow {
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
   }
@@ -290,3 +390,20 @@
   top: 6px;
   right: 8px;
 }
+
+/* ---------- Leaflet: day theme ---------- */
+.theme-day .leaflet-container { background: #E8E2D9; }
+.theme-day .leaflet-tile-pane { opacity: 0.86; }
+.theme-day .map-stage .glass,
+.theme-day .map-stage .glass-strong { background-color: rgba(255, 255, 255, 0.72); }
+.theme-day .leaflet-control-attribution { background: rgba(251, 249, 246, 0.7) !important; color: #6B635A; }
+.theme-day .leaflet-control-attribution a { color: #6B635A; }
+.theme-day .leaflet-control-zoom.leaflet-bar {
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 10px 30px -12px rgba(60, 45, 30, 0.35) !important;
+  background: rgba(255, 255, 255, 0.7);
+}
+.theme-day .leaflet-control-zoom a { color: #1F1D1B !important; border-bottom: 1px solid rgba(31, 29, 27, 0.06) !important; }
+.theme-day .leaflet-control-zoom a:hover { background: rgba(255, 255, 255, 0.9) !important; }
+.theme-day .leaflet-popup-content-wrapper,
+.theme-day .leaflet-popup-tip { background: rgba(251, 249, 246, 0.94); }

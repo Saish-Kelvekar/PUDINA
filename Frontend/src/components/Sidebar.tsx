@@ -67,7 +67,7 @@ export function Sidebar({ user, isOpen, onClose, onLogout }: { user: any; isOpen
                   className={cn(
                     'group relative flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200',
                     isActive(item.href)
-                      ? 'bg-bronze text-sand-50 shadow-[0_10px_24px_-10px_rgba(227,160,52,0.6)]'
+                      ? 'nav-active'
                       : 'text-ink-muted hover:bg-white/80 hover:text-ink',
                   )}
                 >
@@ -114,7 +114,7 @@ export function Sidebar({ user, isOpen, onClose, onLogout }: { user: any; isOpen
             aria-current={isActive(item.href) ? 'page' : undefined}
             className={cn(
               'flex min-w-[52px] flex-1 flex-col items-center gap-0.5 rounded-full px-2 py-1.5 text-[9px] font-semibold transition-colors',
-              isActive(item.href) ? 'bg-bronze text-sand-50' : 'text-ink-muted',
+              isActive(item.href) ? 'nav-active' : 'text-ink-muted',
             )}
           >
             {item.icon}

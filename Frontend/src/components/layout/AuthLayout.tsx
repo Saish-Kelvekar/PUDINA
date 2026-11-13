@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain, Route, Signal } from 'lucide-react';
+import { Preferences } from '@/components/Preferences';
+import { useTheme } from '@/lib/theme';
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -13,6 +15,7 @@ interface AuthLayoutProps {
 /** Full-screen looping video background with a frosted auth card. */
 export function AuthLayout({ eyebrow, title, accent, description, children }: AuthLayoutProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     const v = videoRef.current;
@@ -28,7 +31,7 @@ export function AuthLayout({ eyebrow, title, accent, description, children }: Au
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#14110E]">
+    <div className={`relative min-h-screen w-full overflow-hidden ${theme === 'day' ? 'bg-[#2b2622]' : 'bg-[#14110E]'}`}>
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -50,9 +53,12 @@ export function AuthLayout({ eyebrow, title, accent, description, children }: Au
             <Monogram />
             <span className="hidden text-[11px] font-semibold uppercase tracking-[0.35em] sm:block">TrafficVision</span>
           </Link>
+          <div className="flex items-center gap-2">
+          <Preferences onVideo />
           <div className="rounded-full border border-[rgba(255,255,255,0.15)] bg-[rgba(255,255,255,0.08)] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-white backdrop-blur-md">
             <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-[#E3A034] align-middle animate-pulse" />
             Live demo
+          </div>
           </div>
         </header>
 
@@ -84,7 +90,13 @@ export function AuthLayout({ eyebrow, title, accent, description, children }: Au
 
           {/* Card */}
           <section className="w-full max-w-md self-center lg:self-auto animate-slide-up [animation-delay:120ms]">
-            <div className="theme-light rounded-5xl border border-black/5 bg-[#EAE5DF] p-7 shadow-frame sm:p-9">
+            <div
+              className={
+                theme === 'day'
+                  ? 'theme-light rounded-5xl border border-white/60 bg-sand-50/80 p-7 shadow-frame backdrop-blur-2xl sm:p-9'
+                  : 'theme-light rounded-5xl border border-black/5 bg-[#EAE5DF] p-7 shadow-frame sm:p-9'
+              }
+            >
               {children}
             </div>
           </section>

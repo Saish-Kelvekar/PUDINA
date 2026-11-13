@@ -31,13 +31,13 @@ export default {
           dark: 'rgb(var(--tv-accent-dark) / <alpha-value>)',
         },
         traffic: {
-          green: '#2A8E7E', // Signal Teal
-          yellow: '#E3A034', // Traffic Amber
-          orange: '#E07B39',
-          red: '#E0604F',
-          grey: '#8F8882',
-          blue: '#6A8FB8',
-          purple: '#9D88C2',
+          green: 'rgb(var(--tv-green) / <alpha-value>)', // Signal Teal at night
+          yellow: 'rgb(var(--tv-yellow) / <alpha-value>)', // Traffic Amber at night
+          orange: 'rgb(var(--tv-orange) / <alpha-value>)',
+          red: 'rgb(var(--tv-red) / <alpha-value>)',
+          grey: 'rgb(var(--tv-grey) / <alpha-value>)',
+          blue: 'rgb(var(--tv-blue) / <alpha-value>)',
+          purple: 'rgb(var(--tv-purple) / <alpha-value>)',
         },
       },
       // White surfaces and edges become translucent on the dark canvas
@@ -49,8 +49,8 @@ export default {
         white: 'rgb(255 255 255 / calc(<alpha-value> * var(--tv-white-border, 1)))',
       },
       fontFamily: {
-        sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
-        display: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
+        sans: ['Manrope', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Noto Sans Devanagari', 'Noto Sans Kannada', 'Georgia', 'Times New Roman', 'serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       borderRadius: {
@@ -58,10 +58,10 @@ export default {
         '5xl': '2.5rem',
       },
       boxShadow: {
-        panel: '0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px -12px rgb(0 0 0 / 0.45)',
-        panelHover: '0 2px 4px rgb(0 0 0 / 0.25), 0 18px 40px -16px rgb(0 0 0 / 0.55)',
-        glass: '0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6)',
-        frame: '0 30px 80px -30px rgb(0 0 0 / 0.7)',
+        panel: 'var(--tv-shadow-panel)',
+        panelHover: 'var(--tv-shadow-panel-hover)',
+        glass: 'var(--tv-shadow-glass)',
+        frame: 'var(--tv-shadow-frame)',
       },
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out both',

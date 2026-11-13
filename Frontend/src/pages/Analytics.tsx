@@ -1,3 +1,4 @@
+import { useThemeColors } from '@/lib/theme';
 import { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/components/ui/Toast';
 import { StatCard, StatStrip } from '@/components/ui/StatCard';
@@ -20,9 +21,9 @@ import {
 import { Activity, Clock, TrendingUp, AlertTriangle, Hourglass, CheckCircle2, Ambulance, Route as RouteIcon } from 'lucide-react';
 import { routeColor } from '@/lib/utils';
 
-const COLORS = ['#E9E4DE', '#E3A034', '#2A8E7E', '#F0BE6A', '#9D88C2', '#6A8FB8', '#5FBFAE'];
 
 export default function Analytics() {
+  const tc = useThemeColors();
   const { add } = useToast() as any;
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -175,13 +176,13 @@ export default function Analytics() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={hourly} margin={{ top: 10, right: 0, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#B3ADA8' }} axisLine={false} tickLine={false} interval={1} />
-                  <YAxis tick={{ fontSize: 11, fill: '#B3ADA8' }} axisLine={false} tickLine={false} unit="%" />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(227,160,52,0.08)' }} />
+                  <CartesianGrid strokeDasharray="2 6" stroke={tc.chartGrid} vertical={false} />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: tc.chartTick }} axisLine={false} tickLine={false} interval={1} />
+                  <YAxis tick={{ fontSize: 11, fill: tc.chartTick }} axisLine={false} tickLine={false} unit="%" />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: tc.chartCursor }} />
                   <Bar dataKey="value" radius={[8, 8, 8, 8]} maxBarSize={22} isAnimationActive={false}>
                     {hourly.map((h) => (
-                      <Cell key={h.hour} fill={h.value === peak ? '#E3A034' : '#E9E4DE'} />
+                      <Cell key={h.hour} fill={h.value === peak ? tc.chartPeak : tc.chartMain} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -217,7 +218,7 @@ export default function Analytics() {
                       isAnimationActive={false}
                     >
                       {incidentTypes.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={tc.pie[index % tc.pie.length]} />
                       ))}
                     </Pie>
                     <Tooltip content={<ChartTooltip />} />
@@ -232,7 +233,7 @@ export default function Analytics() {
                 {incidentTypes.map((t, i) => (
                   <div key={t.name} className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-2 text-ink-soft">
-                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: tc.pie[i % tc.pie.length] }} />
                       {t.name}
                     </span>
                     <span className="font-mono text-ink-muted">{t.value}</span>
@@ -250,10 +251,10 @@ export default function Analytics() {
           <h3 className="display mb-5 text-2xl">Prediction error</h3>
           {pe15 || pe30 ? (
             <div className="space-y-4">
-              {pe15 && metric('15 min · model MAE', `${pe15.mae_model_kmph} km/h`, (pe15.mae_model_kmph / maxMae) * 100, '#E9E4DE')}
-              {pe15 && metric('15 min · baseline MAE', `${pe15.mae_baseline_kmph} km/h`, (pe15.mae_baseline_kmph / maxMae) * 100, '#E3A034')}
-              {pe30 && metric('30 min · model MAE', `${pe30.mae_model_kmph} km/h`, (pe30.mae_model_kmph / maxMae) * 100, '#E9E4DE')}
-              {pe30 && metric('30 min · baseline MAE', `${pe30.mae_baseline_kmph} km/h`, (pe30.mae_baseline_kmph / maxMae) * 100, '#E3A034')}
+              {pe15 && metric('15 min · model MAE', `${pe15.mae_model_kmph} km/h`, (pe15.mae_model_kmph / maxMae) * 100, tc.chartMain)}
+              {pe15 && metric('15 min · baseline MAE', `${pe15.mae_baseline_kmph} km/h`, (pe15.mae_baseline_kmph / maxMae) * 100, tc.chartAccent)}
+              {pe30 && metric('30 min · model MAE', `${pe30.mae_model_kmph} km/h`, (pe30.mae_model_kmph / maxMae) * 100, tc.chartMain)}
+              {pe30 && metric('30 min · baseline MAE', `${pe30.mae_baseline_kmph} km/h`, (pe30.mae_baseline_kmph / maxMae) * 100, tc.chartAccent)}
             </div>
           ) : (
             <p className="text-sm text-ink-muted">The ML service is offline, so model metrics are unavailable.</p>
