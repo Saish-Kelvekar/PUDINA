@@ -81,11 +81,11 @@ function NetworkLayer() {
         const renderer = getRenderer(map);
         const lines = g.edges.filter((e) => e.coords.length >= 2).map((e) => e.coords as L.LatLngExpression[]);
         layers.push(
-          L.polyline(lines, { color: '#8A8178', weight: 1.5, opacity: 0.35, interactive: false, renderer }).addTo(map),
+          L.polyline(lines, { color: '#B3ADA8', weight: 1.5, opacity: 0.22, interactive: false, renderer }).addTo(map),
           L.rectangle(g.bounds, {
-            color: '#9A6B4F',
+            color: '#E3A034',
             weight: 1.5,
-            opacity: 0.7,
+            opacity: 0.6,
             dashArray: '6, 8',
             fill: false,
             interactive: false,
@@ -176,9 +176,9 @@ function RouteLines({ routes }: { routes: RouteResult[] }) {
       const isEmergency = r.type === 'emergency' || r.label.toLowerCase().includes('emergency');
       const strong = r.recommended || isEmergency;
       L.polyline(latlngs, {
-        color: '#1F1D1B',
+        color: '#000000',
         weight: strong ? 12 : 9,
-        opacity: 0.16,
+        opacity: 0.4,
         lineCap: 'round',
         lineJoin: 'round',
         interactive: false,
@@ -252,7 +252,7 @@ function Pins({ pins }: { pins: MapPin[] }) {
         className: '',
         iconSize: [30, 30],
         iconAnchor: [15, 15],
-        html: `<div style="width:30px;height:30px;border-radius:999px;background:${p.color ?? '#1F1D1B'};color:#FBF9F6;display:flex;align-items:center;justify-content:center;font:600 12px Manrope,sans-serif;border:3px solid #FBF9F6;box-shadow:0 6px 16px -6px rgba(31,29,27,.6)">${esc(p.label)}</div>`,
+        html: `<div style="width:30px;height:30px;border-radius:999px;background:${p.color ?? '#FFFFFF'};color:${p.color ? '#FFFFFF' : '#14110E'};display:flex;align-items:center;justify-content:center;font:600 12px Manrope,sans-serif;border:3px solid ${p.color ? '#FFFFFF' : '#14110E'};box-shadow:0 6px 16px -6px rgba(0,0,0,.7)">${esc(p.label)}</div>`,
       });
       const m = L.marker([p.lat, p.lng], { icon, keyboard: false });
       if (p.title) m.bindTooltip(esc(p.title), { direction: 'top', offset: [0, -14] });
@@ -367,16 +367,16 @@ function MapViewImpl({
       zoomControl={false}
       attributionControl
     >
-      {/* Esri Light Gray Canvas: a quiet, key-free basemap so traffic colours stand out. */}
+      {/* Esri Dark Gray Canvas: a quiet, key-free night basemap so traffic colours stand out. */}
       <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
         attribution="Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
         maxNativeZoom={16}
         maxZoom={19}
         {...TILE_PERF}
       />
       <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
         maxNativeZoom={16}
         maxZoom={19}
         className="tv-labels"

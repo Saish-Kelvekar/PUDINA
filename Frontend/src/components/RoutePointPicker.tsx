@@ -15,7 +15,7 @@ export const toRoutePoint = (p: PickedPoint): RoutePoint =>
   p.node_id ? { node_id: p.node_id } : { lat: p.lat, lng: p.lng };
 
 /** A/B pins for the map. */
-export function pickPins(from: PickedPoint | null, to: PickedPoint | null, toColor = '#9A6B4F'): Pin[] {
+export function pickPins(from: PickedPoint | null, to: PickedPoint | null, toColor = '#E3A034'): Pin[] {
   const pins: Pin[] = [];
   if (from) pins.push({ lat: from.lat, lng: from.lng, label: 'A', title: from.label });
   if (to) pins.push({ lat: to.lat, lng: to.lng, label: 'B', color: toColor, title: to.label });

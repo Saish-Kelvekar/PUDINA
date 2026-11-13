@@ -8,7 +8,7 @@ export function Badge({ className, variant = 'default', children, ...props }: Ba
   const variants = {
     default: 'bg-white/70 text-ink-soft border-white',
     success: 'bg-traffic-green/10 text-traffic-green border-traffic-green/25',
-    warning: 'bg-traffic-yellow/15 text-[#8a6a1c] border-traffic-yellow/30',
+    warning: 'bg-traffic-yellow/15 text-traffic-yellow border-traffic-yellow/30',
     error: 'bg-traffic-red/10 text-traffic-red border-traffic-red/25',
     info: 'bg-traffic-blue/10 text-traffic-blue border-traffic-blue/25',
     muted: 'bg-sand-200/70 text-ink-muted border-sand-300',

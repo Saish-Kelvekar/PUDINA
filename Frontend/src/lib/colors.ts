@@ -1,8 +1,8 @@
 export const CONGESTION_COLORS: Record<string, string> = {
-  green: '#5E8C61',
-  yellow: '#D4A93C',
+  green: '#2A8E7E',
+  yellow: '#E3A034',
   orange: '#D07B3A',
-  red: '#B8453A',
+  red: '#E0604F',
   grey: '#A39B92',
   blue: '#4A6A8A',
   purple: '#7E6A9A',
@@ -29,10 +29,10 @@ export function congestionLabel(level: number): string {
 
 export function statusColor(status: string): string {
   switch (status?.toLowerCase()) {
-    case 'verified': return '#5E8C61';
-    case 'pending': return '#D4A93C';
+    case 'verified': return '#2A8E7E';
+    case 'pending': return '#E3A034';
     case 'resolved': return '#8A8178';
-    case 'rejected': return '#B8453A';
+    case 'rejected': return '#E0604F';
     default: return '#A39B92';
   }
 }

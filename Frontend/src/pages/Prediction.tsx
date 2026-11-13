@@ -184,12 +184,12 @@ export default function Prediction() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 10, left: -10 }} barGap={4}>
-                    <CartesianGrid strokeDasharray="2 6" stroke="#CFC4B6" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B635A' }} interval={0} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#6B635A' }} domain={[0, 100]} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(154,107,79,0.08)', radius: 12 } as any} />
-                    <Bar dataKey="current" fill="#1F1D1B" radius={[8, 8, 8, 8]} maxBarSize={18} name="Current %" />
-                    <Bar dataKey="predicted" fill="#C49A7A" radius={[8, 8, 8, 8]} maxBarSize={18} name="Predicted %" />
+                    <CartesianGrid strokeDasharray="2 6" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#B3ADA8' }} interval={0} angle={-15} textAnchor="end" height={50} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: '#B3ADA8' }} domain={[0, 100]} axisLine={false} tickLine={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(227,160,52,0.08)', radius: 12 } as any} />
+                    <Bar dataKey="current" fill="#E9E4DE" radius={[8, 8, 8, 8]} maxBarSize={18} name="Current %" />
+                    <Bar dataKey="predicted" fill="#E3A034" radius={[8, 8, 8, 8]} maxBarSize={18} name="Predicted %" />
                   </BarChart>
                 </ResponsiveContainer>
               )}

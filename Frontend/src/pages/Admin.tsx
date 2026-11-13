@@ -101,14 +101,14 @@ export default function Admin() {
         const closed = a.congestion_level_after === 'closed';
         lines.push({
           coords: e.coords,
-          color: closed ? '#1F1D1B' : congestionColor(LEVEL_AFTER[a.congestion_level_after] ?? -1),
+          color: closed ? '#FFFFFF' : congestionColor(LEVEL_AFTER[a.congestion_level_after] ?? -1),
           weight: a.hops === 0 ? 8 : 6,
           dash: closed ? '4, 6' : undefined,
           title: `${e.name ?? a.segment_id}: ${a.congestion_level_after}${a.extra_delay_s != null ? ` · +${Math.round(a.extra_delay_s)}s` : ''}`,
         });
       }
       if (res.diversion_route) {
-        lines.push({ coords: res.diversion_route.coords, color: '#4A6A8A', weight: 5, dash: '10, 8', title: `Diversion · ${res.diversion_route.eta_min} min` });
+        lines.push({ coords: res.diversion_route.coords, color: '#6A8FB8', weight: 5, dash: '10, 8', title: `Diversion · ${res.diversion_route.eta_min} min` });
       }
       setImpact(res);
       setImpactLines(lines);
