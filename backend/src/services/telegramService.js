@@ -51,7 +51,7 @@ function buildCaption({ user, incident, danger, place, note, at = new Date() }) 
   const time = at.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
   const lines = [];
   if (incident) lines.push(`🚨 INCIDENT #${incident.id} · ${String(incident.category).toUpperCase()} · ${incident.status}`);
-  else lines.push("📷 TrafficVision live camera");
+  else lines.push("📷 HUMSAFAR live camera");
   lines.push(...dangerLines(danger));
   lines.push(...placeLines(place));
   if (user) lines.push(`👤 ${user.name || "User"} (${user.role})`);

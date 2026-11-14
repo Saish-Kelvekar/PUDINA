@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Map, Route, AlertCircle, Brain, Signal, Ambulance, ShieldAlert, BarChart3, LogOut, Camera } from 'lucide-react';
+import { Map, Route, AlertCircle, Brain, Signal, Ambulance, ShieldAlert, BarChart3, LogOut, Camera, Navigation } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -14,6 +14,7 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Live Traffic Map', short: 'Map', href: '/map', icon: <Map className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Route Planner', short: 'Routes', href: '/route', icon: <Route className="h-[18px] w-[18px]" />, group: 'core' },
+  { label: 'Live Trip', short: 'Trip', href: '/trip', icon: <Navigation className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Report Incident', short: 'Report', href: '/report', icon: <AlertCircle className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Live Camera', short: 'Camera', href: '/camera', icon: <Camera className="h-[18px] w-[18px]" />, group: 'core' },
   { label: 'Traffic Prediction', short: 'Forecast', href: '/prediction', icon: <Brain className="h-[18px] w-[18px]" />, group: 'advanced' },

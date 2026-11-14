@@ -1,4 +1,4 @@
-// TrafficVision AI — shared TypeScript types
+// HUMSAFAR — shared TypeScript types
 // Frontend-facing shapes. Backend payloads are mapped onto these in src/api/api.ts.
 
 export type LatLng = { lat: number; lng: number };
@@ -353,4 +353,45 @@ export interface CameraSendResult {
   location: { lat: number; lng: number; road: string | null; maps_url: string } | null;
   map_pin_sent: boolean;
   telegram_message_id?: number;
+}
+
+// ----- Live Trip (simulated vehicle position) -----
+export type TripRouteType = 'recommended' | 'fastest' | 'shortest' | 'least_congested' | 'safest' | 'eco';
+
+export interface TripLeg {
+  edge_id: string;
+  road_name: string | null;
+  from_node: string;
+  to_node: string;
+  coords: Array<[number, number]>;
+  length_m: number;
+  speed_kmph: number;
+  congestion_level: string;
+  drive_s: number;
+  incident_delay_s: number;
+  incident_ids: number[];
+  signal_wait_s: number;
+  signal_node: string | null;
+}
+
+export interface TripPlan {
+  sim_time_utc: string;
+  source: { node_id: string; name: string; lat: number; lng: number };
+  destination: { node_id: string; name: string; lat: number; lng: number };
+  route_type: string;
+  route_label: string;
+  recommended: boolean;
+  explanation?: string;
+  distance_km: number;
+  eta_s: number;
+  eta_min: number;
+  signals_on_route: number;
+  incident_ids: number[];
+  closure_warnings: string[];
+  node_ids: string[];
+  coords: Array<[number, number]>;
+  legs: TripLeg[];
+  signal_wait_assumption_s: number;
+  position_source: 'SIMULATED';
+  traffic_source: string;
 }
