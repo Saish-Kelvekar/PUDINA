@@ -26,6 +26,8 @@ import type {
   RouteHistoryPage,
   CameraStatus,
   CameraSendResult,
+  TripPlan,
+  TripRouteType,
 } from '@/types';
 import { routeColor } from '@/lib/utils';
 
@@ -67,9 +69,9 @@ function toApiError(error: AxiosError<any>): ApiError {
       : '';
     message = env.error.message + details;
   } else if (!error.response) {
-    message = 'Cannot reach the TrafficVision server. Is the backend running on port 5000?';
+    message = 'Cannot reach the HUMSAFAR server. Is the backend running on port 5000?';
   } else if (status === 502 || status === 503 || status === 504) {
-    message = 'The TrafficVision server is not responding. Is the backend running on port 5000?';
+    message = 'The HUMSAFAR server is not responding. Is the backend running on port 5000?';
   } else {
     message = error.message;
   }
@@ -430,6 +432,11 @@ export const apiClient = {
 
   async clearRouteHistory(): Promise<{ deleted: number }> {
     return del('/routes/history');
+  },
+
+  // ----- Live Trip (simulated vehicle position; nothing is saved) ----------
+  async planTrip(source: RoutePoint, destination: RoutePoint, routeType: TripRouteType = 'recommended'): Promise<TripPlan> {
+    return post<TripPlan>('/trips/plan', { source, destination, route_type: routeType });
   },
 
   // ----- Live camera -> Telegram -------------------------------------------

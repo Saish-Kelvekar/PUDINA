@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { Sidebar, NAV_ITEMS } from '@/components/Sidebar';
-import { Monogram } from '@/components/layout/AuthLayout';
+import { Monogram, Wordmark } from '@/components/layout/AuthLayout';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import MapPage from '@/pages/Map';
@@ -15,6 +15,7 @@ import EmergencyRouting from '@/pages/EmergencyRouting';
 import Admin from '@/pages/Admin';
 import Analytics from '@/pages/Analytics';
 import LiveCamera from '@/pages/LiveCamera';
+import LiveTrip from '@/pages/LiveTrip';
 import { ToastProvider } from '@/components/ui/Toast';
 import { Preferences } from '@/components/Preferences';
 import { ThemeProvider } from '@/lib/theme';
@@ -70,9 +71,7 @@ function AppShell() {
       <header className="flex shrink-0 items-center justify-between gap-3">
         <Link to="/map" className="flex items-center gap-3 pl-1">
           <Monogram dark />
-          <span className="hidden text-[11px] font-semibold uppercase tracking-[0.35em] text-ink sm:block">
-            TrafficVision
-          </span>
+          <Wordmark className="hidden text-[12px] sm:block" />
         </Link>
 
         <div className="glass hidden items-center gap-1 rounded-full p-1.5 lg:flex">
@@ -133,6 +132,7 @@ function AppShell() {
             <Route path="/signal" element={<RequireAuth><SignalOptimization /></RequireAuth>} />
             <Route path="/emergency" element={<RequireAuth><EmergencyRouting /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+            <Route path="/trip" element={<RequireAuth><LiveTrip /></RequireAuth>} />
             <Route path="/camera" element={<RequireAuth><LiveCamera /></RequireAuth>} />
             <Route path="/analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
             <Route path="/" element={<Navigate to="/map" replace />} />

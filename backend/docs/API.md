@@ -308,6 +308,16 @@ MP4 goes out as a Telegram video, WebM as a file. Errors: 400 VALIDATION_ERROR (
 404 NOT_FOUND (incident), 503 TELEGRAM_NOT_CONFIGURED, 502 TELEGRAM_FAILED.
 Needs `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `backend/.env` (never committed).
 
+### 2.16 Live Trip (login required)
+`POST /trips/plan` with `{ "source": {...}, "destination": {...}, "route_type": "recommended" }`
+(`route_type`: recommended, fastest, shortest, least_congested, safest, eco). Same points as `/routes/compare`.
+
+Returns the chosen route split into **legs** (one per road): `edge_id`, `road_name`, `from_node`, `to_node`, `coords`,
+`length_m`, `speed_kmph`, `congestion_level`, `drive_s`, `incident_delay_s`, `incident_ids`, `signal_wait_s`, `signal_node`,
+plus `eta_s` / `eta_min` (sum of the legs, identical to the route card's ETA), `distance_km`, `node_ids`, `coords`,
+`position_source: "SIMULATED"`. **Read-only:** nothing is saved, so Recent searches is not affected.
+The website moves a simulated vehicle along the legs and re-plans from the next junction when an incident is verified ahead.
+
 ## 3. Member 3's side
 
 Everything Member 3 needs (graph and CSV rules, ML service requests and responses, seed data) is in **`backend/docs/CONTRACT_M3.md`**. Approach IDs are `<node id>-<edge id>`, e.g. `n2-e1`; junction IDs are `J-<node id>`, e.g. `J-n2`.

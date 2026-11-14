@@ -141,7 +141,7 @@ export default function LiveCamera() {
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
     // Time stamp in the corner, like a dash cam.
-    const stamp = `TrafficVision · ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`;
+    const stamp = `HUMSAFAR · ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`;
     ctx.font = `${Math.max(14, Math.round(canvas.width / 60))}px sans-serif`;
     const pad = 8;
     const w = ctx.measureText(stamp).width + pad * 2;

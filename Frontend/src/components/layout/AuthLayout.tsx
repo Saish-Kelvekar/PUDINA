@@ -51,7 +51,7 @@ export function AuthLayout({ eyebrow, title, accent, description, children }: Au
         <header className="flex items-center justify-between">
           <Link to="/login" className="flex items-center gap-3 text-white">
             <Monogram />
-            <span className="hidden text-[11px] font-semibold uppercase tracking-[0.35em] sm:block">TrafficVision</span>
+            <Wordmark light className="hidden text-[12px] sm:block" />
           </Link>
           <div className="flex items-center gap-2">
           <Preferences onVideo />
@@ -110,14 +110,25 @@ export function AuthLayout({ eyebrow, title, accent, description, children }: Au
   );
 }
 
-export function Monogram({ dark = false }: { dark?: boolean }) {
+/** HUMSAFAR logo mark on a white circle, so the navy part shows on dark backgrounds too. */
+export function Monogram({ dark: _dark = false, size = 'md' }: { dark?: boolean; size?: 'md' | 'lg' }) {
   return (
     <span
-      className={`flex h-9 w-9 items-center justify-center rounded-full font-display text-sm italic ${
-        dark ? 'bg-ink text-sand-50' : 'bg-[#FFFFFF] text-[#14110E]'
+      className={`flex shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] p-1 shadow-[0_4px_14px_-6px_rgba(0,0,0,0.5)] ${
+        size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
       }`}
     >
-      Tv
+      <img src="/brand/humsafar-mark.png" alt="" className="h-full w-full object-contain" />
     </span>
   );
+}
+
+/** "HUM" + "SAFAR" wordmark, coloured like the logo. Never translated. */
+export function Wordmark({ className = '', light = false }: { className?: string; light?: boolean }) {
+  return (
+    <span data-no-translate translate="no" lang="en" style={{ letterSpacing: '0.3em' }} className={`font-semibold uppercase ${className}`}>
+      <span className={light ? 'text-[#FFFFFF]' : 'text-ink'}>Hum</span>
+      <span className="text-[#12A4A9]">safar</span>
+    </span>
+  )
 }

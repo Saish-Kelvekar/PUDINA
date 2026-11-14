@@ -6,7 +6,7 @@ let io = null;
 function init(socketServer) {
   io = socketServer;
   io.on("connection", (socket) => {
-    socket.emit("hello", { message: "TrafficVision live updates connected" });
+    socket.emit("hello", { message: "HUMSAFAR live updates connected" });
   });
 }
 
