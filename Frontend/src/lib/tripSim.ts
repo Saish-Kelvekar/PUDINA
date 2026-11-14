@@ -166,3 +166,72 @@ export const fmtClock = (s: number) => {
   const m = Math.floor(v / 60);
   return `${String(m).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}`;
 };
+
+// ---------------------------------------------------------------------------
+// Real GPS mode: the vehicle's place on the route comes from a distance (metres along the route),
+// either measured from the device's movement or found by projecting its position onto the route.
+// ---------------------------------------------------------------------------
+
+/** Trip time (seconds, at planned speeds incl. red lights before this point) to drive `m` metres along the route. */
+export function timeAtDistance(tl: Timeline, mRaw: number): number {
+  const m = Math.max(0, Math.min(mRaw, tl.totalM));
+  if (m >= tl.totalM) return tl.totalS;
+  let i = tl.legs.length - 1;
+  for (let k = 0; k < tl.legs.length; k++) {
+    if (m < tl.cumLegStartM[k] + tl.legLengthsM[k]) { i = k; break; }
+  }
+  const drive = tl.segments.find((s) => s.legIndex === i && s.kind === 'drive');
+  if (!drive) return 0;
+  const f = tl.legLengthsM[i] > 0 ? (m - tl.cumLegStartM[i]) / tl.legLengthsM[i] : 1;
+  return drive.start + f * (drive.end - drive.start);
+}
+
+/** Vehicle state `m` metres along the route, after `elapsedS` real seconds, moving at `speedKmph`. */
+export function stateAtDistance(tl: Timeline, mRaw: number, elapsedS: number, speedKmph: number, arriveWithinM = 15): VehicleState {
+  const m = Math.max(0, Math.min(mRaw, tl.totalM));
+  if (m >= tl.totalM - arriveWithinM) {
+    const last = tl.legs[tl.legs.length - 1];
+    const end = last.coords[last.coords.length - 1];
+    return { lat: end[0], lng: end[1], legIndex: tl.legs.length - 1, kind: 'arrived', speedKmph: 0,
+             travelledM: tl.totalM, remainingM: 0, elapsedS, remainingS: 0, waitLeftS: 0, progress: 1 };
+  }
+  let i = tl.legs.length - 1;
+  for (let k = 0; k < tl.legs.length; k++) {
+    if (m < tl.cumLegStartM[k] + tl.legLengthsM[k]) { i = k; break; }
+  }
+  const [lat, lng] = pointAlong(tl.legs[i].coords, m - tl.cumLegStartM[i]);
+  return {
+    lat, lng, legIndex: i, kind: 'drive', speedKmph,
+    travelledM: m, remainingM: tl.totalM - m, elapsedS,
+    remainingS: Math.max(0, tl.totalS - timeAtDistance(tl, m)), waitLeftS: 0, progress: m / tl.totalM,
+  };
+}
+
+/**
+ * Closest point of the route to (lat, lng), searching only at or after `minM - 30` metres
+ * (so the vehicle never jumps backwards). Returns metres along the route and metres off the route.
+ */
+export function projectOnRoute(tl: Timeline, lat: number, lng: number, minM = 0): { alongM: number; offM: number } {
+  const cosLat = Math.cos(rad(lat));
+  const toXY = (p: [number, number]): [number, number] => [(p[1] - lng) * 111320 * cosLat, (p[0] - lat) * 110540];
+  let best = { alongM: minM, offM: Infinity };
+  tl.legs.forEach((leg, li) => {
+    let pieceStart = tl.cumLegStartM[li];
+    for (let k = 1; k < leg.coords.length; k++) {
+      const a = leg.coords[k - 1];
+      const b = leg.coords[k];
+      const pieceLen = distM(a, b);
+      const [ax, ay] = toXY(a);
+      const [bx, by] = toXY(b);
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len2 = dx * dx + dy * dy;
+      const f = len2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+      const off = Math.hypot(ax + f * dx, ay + f * dy);
+      const along = pieceStart + f * pieceLen;
+      if (along >= minM - 30 && off < best.offM) best = { alongM: along, offM: off };
+      pieceStart += pieceLen;
+    }
+  });
+  return best;
+}
